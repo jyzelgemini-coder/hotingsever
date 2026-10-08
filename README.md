@@ -97,3 +97,4 @@ Access port `3000` via your server IP or domain reverse proxy (Nginx / Caddy).
     ├── instances/          # Stored bot code, dependencies & logs
     └── db.json             # Server configurations & metadata
 ```
+"# hotingsever" 
