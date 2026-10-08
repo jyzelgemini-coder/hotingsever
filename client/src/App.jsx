@@ -2,48 +2,64 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Server, Cpu, HardDrive, Terminal, Play, Square, RotateCw, Trash2,
   Folder, FileCode, Copy, Check, Send, Bot, Shield, Globe, Gamepad2,
-  ExternalLink, Plus, RefreshCw, DollarSign, Activity, AlertCircle, ChevronRight
+  ExternalLink, Plus, RefreshCw, DollarSign, Activity, AlertCircle, ChevronRight,
+  ShoppingCart, HelpCircle, Mail, Lock, User, LogOut, ArrowLeft, CheckCircle2,
+  MessageSquare, Radio, Sparkles
 } from 'lucide-react';
 
 export default function App() {
-  const [activeView, setActiveView] = useState('hosting'); // 'hosting' | 'servers' | 'detail' | 'telegram' | 'wallet'
+  // Navigation: 'home' (Image 1) | 'minecraft' (Image 2) | 'games' (Image 3) | 'cloud' (Image 4) | 'dashboard' | 'tickets' | 'hardware'
+  const [currentPage, setCurrentPage] = useState('home');
+
+  // Auth state
+  const [user, setUser] = useState(null); // null if logged out, or user object
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register' | 'verify'
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authCode, setAuthCode] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authToast, setAuthToast] = useState(null);
+
+  // Cart & Orders
+  const [cartCount, setCartCount] = useState(0);
+  const [recentOrderSuccess, setRecentOrderSuccess] = useState(null);
+
+  // --- Page 2: Minecraft State ---
+  const [minecraftEdition, setMinecraftEdition] = useState('java'); // 'java' | 'bedrock'
+  const [selectedMinecraftPlan, setSelectedMinecraftPlan] = useState(null);
+
+  // --- Page 3: Game Hosting State ---
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [selectedGamePlan, setSelectedGamePlan] = useState(null);
+
+  // --- Page 4: Cloud / Generic Hosting State ---
+  const [cloudCategory, setCloudCategory] = useState('telegram'); // 'telegram' | 'discord' | 'web' | 'custom'
+  const [cloudRuntime, setCloudRuntime] = useState('python'); // 'python' | 'node' | 'java' | 'go'
+  const [selectedCloudPlan, setSelectedCloudPlan] = useState(null);
+
+  // Dashboard / Backend Data
   const [servers, setServers] = useState([]);
-  const [templates, setTemplates] = useState([]);
   const [systemStats, setSystemStats] = useState(null);
-  const [wallet, setWallet] = useState({ balance: 10, transactions: [] });
+  const [wallet, setWallet] = useState({ balance: 50, transactions: [] });
   const [selectedServer, setSelectedServer] = useState(null);
-  const [detailTab, setDetailTab] = useState('console'); // 'console' | 'env' | 'files' | 'docker'
+  const [dashboardTab, setDashboardTab] = useState('servers'); // 'servers' | 'console' | 'telegram'
 
-  // Deploy modal state
-  const [isDeployOpen, setIsDeployOpen] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('telegram-bot-node');
-  const [deployName, setDeployName] = useState('');
-  const [deployPlan, setDeployPlan] = useState('512');
-  const [deployEnv, setDeployEnv] = useState({});
-  const [isDeploying, setIsDeploying] = useState(false);
-
-  // Terminal & WS state
+  // Terminal & WS
   const [terminalLogs, setTerminalLogs] = useState([]);
   const [terminalInput, setTerminalInput] = useState('');
-  const [autoScroll, setAutoScroll] = useState(true);
   const terminalRef = useRef(null);
   const wsRef = useRef(null);
 
-  // Files & Editor state
-  const [filesList, setFilesList] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent] = useState('');
-  const [dockerConfigs, setDockerConfigs] = useState({ dockerfile: '', dockerCompose: '' });
-  const [copiedDocker, setCopiedDocker] = useState(false);
-
-  // Telegram Controller & Simulator state
+  // Telegram Simulator State
+  const [tgToken, setTgToken] = useState('');
   const [tgStatus, setTgStatus] = useState({ enabled: false, hasToken: false });
-  const [tgTokenInput, setTgTokenInput] = useState('');
   const [simMessages, setSimMessages] = useState([
     {
       id: 1,
       sender: 'bot',
-      text: "👋 Welcome to **MadeTH Cloud & Bot Hosting**!\n\nDeploy and control your Telegram bots, Discord bots, and Cloud backends 24/7.\n\nType `/start` or click a button below to get started!",
+      text: "👋 Welcome to **Apsara Hosting Bot**!\n\nControl your game servers, Telegram bots, and cloud apps 24/7.\n\nType `/start` or click a button below to get started!",
       reply_markup: {
         inline_keyboard: [
           [{ text: '📦 Browse Plans', callback_data: 'browse_plans' }, { text: '⚡ 1-Click Deploy', callback_data: 'wizard_start' }],
@@ -57,37 +73,38 @@ export default function App() {
   const [simLoading, setSimLoading] = useState(false);
   const simChatRef = useRef(null);
 
-  // Initial Fetch & Intervals
-  useEffect(() => {
-    fetchInitialData();
-    const interval = setInterval(() => {
-      fetchServers();
-      fetchSystemStats();
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
+  // Tickets state
+  const [tickets, setTickets] = useState([
+    { id: 'TICK-101', subject: 'Inquiry regarding Telegram bot webhook SSL', status: 'Answered', priority: 'High', date: '2026-10-07' },
+    { id: 'TICK-102', subject: 'Server migration to Phnom Penh Datacenter', status: 'Closed', priority: 'Normal', date: '2026-10-05' }
+  ]);
+  const [newTicketSubject, setNewTicketSubject] = useState('');
 
-  const fetchInitialData = async () => {
-    fetchTemplates();
+  // -------------------------------------------------------------
+  // Initial Data Fetching
+  // -------------------------------------------------------------
+  useEffect(() => {
+    fetchUserData();
     fetchServers();
     fetchSystemStats();
     fetchWallet();
     fetchTgStatus();
-  };
 
-  const fetchTemplates = async () => {
+    const interval = setInterval(() => {
+      fetchServers();
+      fetchSystemStats();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUserData = async () => {
     try {
-      const res = await fetch('/api/templates');
+      const res = await fetch('/api/auth/me');
       const data = await res.json();
-      setTemplates(data);
-      if (data.length > 0) {
-        setSelectedTemplateId(data[0].id);
-        setDeployName(`${data[0].name} #1`);
-        setDeployEnv(data[0].envVars || {});
+      if (data && data.user) {
+        setUser(data.user);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchServers = async () => {
@@ -95,9 +112,7 @@ export default function App() {
       const res = await fetch('/api/servers');
       const data = await res.json();
       setServers(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchSystemStats = async () => {
@@ -105,9 +120,7 @@ export default function App() {
       const res = await fetch('/api/system');
       const data = await res.json();
       setSystemStats(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchWallet = async () => {
@@ -115,9 +128,7 @@ export default function App() {
       const res = await fetch('/api/wallet');
       const data = await res.json();
       setWallet(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchTgStatus = async () => {
@@ -125,28 +136,26 @@ export default function App() {
       const res = await fetch('/api/telegram/status');
       const data = await res.json();
       setTgStatus(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
-  // Terminal WebSocket
+  // -------------------------------------------------------------
+  // Terminal WebSocket logic
+  // -------------------------------------------------------------
   useEffect(() => {
-    if (activeView === 'detail' && selectedServer) {
+    if (currentPage === 'dashboard' && dashboardTab === 'console' && selectedServer) {
       connectTerminal(selectedServer.id);
-      loadFiles(selectedServer.id);
-      loadDocker(selectedServer.id);
     } else {
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     }
-  }, [activeView, selectedServer?.id]);
+  }, [currentPage, dashboardTab, selectedServer?.id]);
 
   const connectTerminal = (serverId) => {
     if (wsRef.current) wsRef.current.close();
-    setTerminalLogs([{ text: '[SYSTEM] Connecting live WebSocket stream...', timestamp: new Date().toISOString() }]);
+    setTerminalLogs([{ text: '[SYSTEM] Connecting live server terminal stream...', timestamp: new Date().toISOString() }]);
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${serverId}`;
@@ -156,7 +165,7 @@ export default function App() {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setTerminalLogs(prev => [...prev, { text: '[SYSTEM] Stream connected. Terminal is live.', timestamp: new Date().toISOString() }]);
+        setTerminalLogs(prev => [...prev, { text: '[SYSTEM] Stream connected. Process terminal is live.', timestamp: new Date().toISOString() }]);
       };
 
       ws.onmessage = (event) => {
@@ -175,10 +184,7 @@ export default function App() {
         }
       };
 
-      ws.onerror = () => {
-        // Fallback polling for logs
-        fetchServerLogs(serverId);
-      };
+      ws.onerror = () => fetchServerLogs(serverId);
     } catch (e) {
       fetchServerLogs(serverId);
     }
@@ -192,14 +198,12 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Auto-scroll terminal
   useEffect(() => {
-    if (autoScroll && terminalRef.current) {
+    if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [terminalLogs, autoScroll]);
+  }, [terminalLogs]);
 
-  // Auto-scroll simulator chat
   useEffect(() => {
     if (simChatRef.current) {
       simChatRef.current.scrollTop = simChatRef.current.scrollHeight;
@@ -223,55 +227,180 @@ export default function App() {
     }
   };
 
-  // Files & Editor
-  const loadFiles = async (serverId) => {
-    try {
-      const res = await fetch(`/api/servers/${serverId}/files`);
-      const data = await res.json();
-      setFilesList(data);
-      const firstFile = data.find(f => f.type === 'file' && (f.name.endsWith('.js') || f.name.endsWith('.py') || f.name.endsWith('.json')));
-      if (firstFile) openFile(serverId, firstFile.path);
-    } catch (e) {
-      console.error(e);
+  // -------------------------------------------------------------
+  // Auth Handlers (Gmail / Password / Code verification)
+  // -------------------------------------------------------------
+  const handleSendVerificationCode = async (e) => {
+    e?.preventDefault();
+    if (!authEmail.trim() || !authEmail.includes('@')) {
+      alert('Please enter a valid Gmail / Email address.');
+      return;
     }
-  };
 
-  const openFile = async (serverId, path) => {
+    setAuthLoading(true);
     try {
-      setSelectedFile(path);
-      const res = await fetch(`/api/servers/${serverId}/files/content?path=${encodeURIComponent(path)}`);
-      const data = await res.json();
-      setFileContent(data.content || '');
-    } catch (e) {
-      alert('Failed to read file: ' + e.message);
-    }
-  };
-
-  const saveFile = async () => {
-    if (!selectedServer || !selectedFile) return;
-    try {
-      await fetch(`/api/servers/${selectedServer.id}/files/save`, {
+      const res = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: selectedFile, content: fileContent })
+        body: JSON.stringify({ email: authEmail.trim() })
       });
-      alert(`Saved ${selectedFile} successfully!`);
-    } catch (e) {
-      alert('Failed to save file: ' + e.message);
-    }
-  };
-
-  const loadDocker = async (serverId) => {
-    try {
-      const res = await fetch(`/api/servers/${serverId}/docker`);
       const data = await res.json();
-      setDockerConfigs(data);
-    } catch (e) {
-      console.error(e);
+      setAuthLoading(false);
+
+      if (data.success) {
+        setAuthMode('verify');
+        setAuthToast(`✉️ Verification code sent to ${authEmail}! Use code: ${data.code}`);
+        setAuthCode(data.code || ''); // Autofill for effortless sandbox testing
+      } else {
+        alert(data.error || 'Failed to send verification code.');
+      }
+    } catch (err) {
+      setAuthLoading(false);
+      alert('Error sending code: ' + err.message);
     }
   };
 
-  // Server Actions
+  const handleVerifyAndRegister = async (e) => {
+    e?.preventDefault();
+    if (!authCode.trim()) {
+      alert('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    setAuthLoading(true);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim(),
+          password: authPassword || 'password123',
+          name: authName.trim() || authEmail.split('@')[0],
+          code: authCode.trim()
+        })
+      });
+      const data = await res.json();
+      setAuthLoading(false);
+
+      if (data.success) {
+        setUser(data.user);
+        setShowAuthModal(false);
+        setAuthToast(null);
+        setCurrentPage('home'); // Redirect to Image 1
+        alert(`🎉 Welcome to Apsara Hosting, ${data.user.name}! Account created successfully.`);
+      } else {
+        alert(data.error || 'Registration failed.');
+      }
+    } catch (err) {
+      setAuthLoading(false);
+      alert('Error registering: ' + err.message);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    setAuthLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim(),
+          password: authPassword.trim()
+        })
+      });
+      const data = await res.json();
+      setAuthLoading(false);
+
+      if (data.success) {
+        setUser(data.user);
+        setShowAuthModal(false);
+        setCurrentPage('home'); // Redirect to Image 1
+      } else {
+        alert(data.error || 'Login failed.');
+      }
+    } catch (err) {
+      setAuthLoading(false);
+      alert('Error logging in: ' + err.message);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setAuthLoading(true);
+    try {
+      const googleEmail = authEmail.trim() || 'customer.google@gmail.com';
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: googleEmail,
+          name: googleEmail.split('@')[0],
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${googleEmail}`
+        })
+      });
+      const data = await res.json();
+      setAuthLoading(false);
+
+      if (data.success) {
+        setUser(data.user);
+        setShowAuthModal(false);
+        setCurrentPage('home'); // Redirect to Image 1
+        alert(`🎉 Signed in with Google as ${data.user.name}!`);
+      }
+    } catch (err) {
+      setAuthLoading(false);
+      alert('Google login failed: ' + err.message);
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentPage('home');
+  };
+
+  // -------------------------------------------------------------
+  // Order Placement Handlers
+  // -------------------------------------------------------------
+  const handlePlaceOrder = async ({ category, edition, plan, runtime = 'node', customName }) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          edition,
+          plan,
+          runtime,
+          name: customName || `${edition || plan?.name} #1`
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setCartCount(prev => prev + 1);
+        setRecentOrderSuccess({
+          order: data.order,
+          server: data.server,
+          plan
+        });
+        fetchServers();
+        fetchWallet();
+      } else {
+        alert(data.error || 'Failed to place order.');
+      }
+    } catch (err) {
+      alert('Order placement error: ' + err.message);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Server Management Actions
+  // -------------------------------------------------------------
   const handleServerAction = async (serverId, action) => {
     try {
       await fetch(`/api/servers/${serverId}/action`, {
@@ -286,83 +415,35 @@ export default function App() {
         setSelectedServer(updated);
       }
     } catch (e) {
-      alert(`Action ${action} failed: ` + e.message);
+      alert(`Action failed: ${e.message}`);
     }
   };
 
   const handleDeleteServer = async (serverId) => {
-    if (!confirm('Are you sure you want to delete this hosted server instance?')) return;
+    if (!confirm('Are you sure you want to terminate this hosted server instance?')) return;
     try {
       await fetch(`/api/servers/${serverId}`, { method: 'DELETE' });
       fetchServers();
       if (selectedServer && selectedServer.id === serverId) {
         setSelectedServer(null);
-        setActiveView('servers');
       }
     } catch (e) {
       alert('Delete failed: ' + e.message);
     }
   };
 
-  // Deploy Form
-  const openDeployWithTemplate = (templateId) => {
-    const t = templates.find(item => item.id === templateId) || templates[0];
-    if (t) {
-      setSelectedTemplateId(t.id);
-      setDeployName(`${t.name} #1`);
-      setDeployEnv(t.envVars || {});
-    }
-    setIsDeployOpen(true);
-  };
-
-  const handleDeploySubmit = async (e) => {
-    e.preventDefault();
-    setIsDeploying(true);
-
-    const template = templates.find(t => t.id === selectedTemplateId);
-    const payload = {
-      name: deployName.trim() || `${template?.name || 'Instance'} #1`,
-      templateId: selectedTemplateId,
-      category: template?.category || 'bot',
-      runtime: template?.runtime || 'node',
-      plan: {
-        name: deployPlan === '512' ? 'Starter' : (deployPlan === '2048' ? 'Pro' : 'Enterprise'),
-        memory: `${deployPlan}MB`,
-        cpu: deployPlan === '512' ? '0.5 vCPU' : (deployPlan === '2048' ? '1.0 vCPU' : '2.0 vCPU')
-      },
-      envVars: deployEnv,
-      autoStart: true
-    };
-
-    try {
-      const res = await fetch('/api/servers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const newServer = await res.json();
-      setIsDeployOpen(false);
-      setIsDeploying(false);
-      fetchServers();
-      setSelectedServer(newServer);
-      setActiveView('detail');
-    } catch (e) {
-      setIsDeploying(false);
-      alert('Deployment error: ' + e.message);
-    }
-  };
-
-  // Telegram Simulator logic
+  // -------------------------------------------------------------
+  // Telegram Bot Simulator logic
+  // -------------------------------------------------------------
   const handleSimSend = async (customText = null, callbackData = null) => {
     const textToSend = customText !== null ? customText : simInput.trim();
     if (!textToSend && !callbackData) return;
     if (customText === null && !callbackData) setSimInput('');
 
-    // Add user message to chat UI
     if (textToSend) {
       setSimMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: textToSend }]);
     } else if (callbackData) {
-      setSimMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `[Clicked: ${callbackData}]` }]);
+      setSimMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `[Action: ${callbackData}]` }]);
     }
 
     setSimLoading(true);
@@ -373,8 +454,8 @@ export default function App() {
         body: JSON.stringify({
           text: textToSend,
           callback_data: callbackData,
-          chatId: 'browser_simulator_user',
-          userName: 'Explorer'
+          chatId: user ? user.id : 'web_guest',
+          userName: user ? user.name : 'Apsara Guest'
         })
       });
       const data = await res.json();
@@ -391,135 +472,190 @@ export default function App() {
       }
     } catch (e) {
       setSimLoading(false);
-      setSimMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        sender: 'bot',
-        text: '❌ Error processing request: ' + e.message
-      }]);
     }
   };
 
-  // Telegram Bot Token save
-  const handleSaveTgToken = async () => {
-    try {
-      const res = await fetch('/api/telegram/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tgTokenInput.trim() })
-      });
-      const data = await res.json();
-      alert(data.message || 'Telegram Bot token updated!');
-      fetchTgStatus();
-    } catch (e) {
-      alert('Failed: ' + e.message);
-    }
-  };
+  // -------------------------------------------------------------
+  // DATA PRESETS MATCHING SCREENSHOTS EXACTLY
+  // -------------------------------------------------------------
+  
+  // Page 2: Minecraft Plans (10 plans matching Image 2)
+  const minecraftPlans = [
+    { id: 'mc-family', name: 'Family Starter', price: '$1.25', ram: '1 GB', cpu: '1 vCPU', disk: '10 GB' },
+    { id: 'mc-basic', name: 'Basic Starter', price: '$2.50', ram: '2 GB', cpu: '1 vCPU', disk: '20 GB' },
+    { id: 'mc-standard', name: 'Standard Starter', price: '$3.75', ram: '3 GB', cpu: '1.5 vCPU', disk: '30 GB' },
+    { id: 'mc-advanced', name: 'Advanced Starter', price: '$5.00', ram: '4 GB', cpu: '2 vCPU', disk: '40 GB' },
+    { id: 'mc-advanced-plus', name: 'Advanced Plus Starter', price: '$7.50', ram: '6 GB', cpu: '3 vCPU', disk: '60 GB' },
+    { id: 'mc-premium', name: 'Premium Starter', price: '$10.00', ram: '8 GB', cpu: '3.5 vCPU', disk: '80 GB' },
+    { id: 'mc-ultimate', name: 'Ultimate Starter', price: '$13.00', ram: '10 GB', cpu: '4 vCPU', disk: '100 GB' },
+    { id: 'mc-elite', name: 'Elite Starter', price: '$20.00', ram: '16 GB', cpu: '4 vCPU', disk: '160 GB' },
+    { id: 'mc-super-elite', name: 'Super Elite Starter', price: '$30.00', ram: '24 GB', cpu: '4.5 vCPU', disk: '240 GB' },
+    { id: 'mc-max', name: 'Max Starter', price: '$40.00', ram: '32 GB', cpu: '4.5 vCPU', disk: '320 GB' },
+  ];
 
-  // Format uptime
-  const formatUptime = (sec) => {
-    if (!sec || sec <= 0) return '0s';
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    if (h > 0) return `${h}h ${m}m`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
+  // Page 3: Popular & More Games (matching Image 3)
+  const popularGames = [
+    { id: 'game-mc-java', name: 'Minecraft Java', startingPrice: '$1.25', icon: '⛏️', cover: 'https://images.unsplash.com/photo-1627856014754-2907e2355d54?w=500&auto=format&fit=crop&q=60' },
+    { id: 'game-mc-bedrock', name: 'Minecraft Bedrock', startingPrice: '$1.25', icon: '🟩', cover: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=60' },
+    { id: 'game-fivem', name: 'Fivem', startingPrice: '$5.00', icon: '🚗', cover: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=500&auto=format&fit=crop&q=60' },
+  ];
+
+  const moreGames = [
+    { id: 'game-hytale', name: 'Hytale', startingPrice: '$1.25', icon: '🛡️', cover: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=500&auto=format&fit=crop&q=60' },
+    { id: 'game-samp', name: 'GTA: San Andreas Multiplayer', startingPrice: '$2.50', icon: '🌴', cover: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=60' },
+    { id: 'game-ark-se', name: 'Ark: Survival Evolved', startingPrice: '$7.50', icon: '🦖', cover: 'https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=500&auto=format&fit=crop&q=60' },
+    { id: 'game-ark-sa', name: 'Ark: Survival Ascended', startingPrice: '$7.50', icon: '🌋', cover: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60' },
+  ];
+
+  // Page 4: Cloud / Generic Hosting Plans (9 plans matching Image 4)
+  const cloudPlans = [
+    { id: 'cloud-starter', name: 'Starter Plan', price: '$0.50', ram: '0.5 GB', cpu: '1 vCPU', disk: '5 GB' },
+    { id: 'cloud-standard', name: 'Standard Plan', price: '$1.00', ram: '1 GB', cpu: '1 vCPU', disk: '10 GB' },
+    { id: 'cloud-advanced', name: 'Advanced Plan', price: '$2.00', ram: '2 GB', cpu: '1 vCPU', disk: '20 GB' },
+    { id: 'cloud-premium', name: 'Premium Plan', price: '$4.00', ram: '4 GB', cpu: '2 vCPU', disk: '40 GB' },
+    { id: 'cloud-elite', name: 'Elite Plan', price: '$6.00', ram: '6 GB', cpu: '2 vCPU', disk: '60 GB' },
+    { id: 'cloud-ultimate', name: 'Ultimate Plan', price: '$8.00', ram: '8 GB', cpu: '3 vCPU', disk: '80 GB' },
+    { id: 'cloud-titan', name: 'Titan Plan', price: '$12.00', ram: '12 GB', cpu: '3 vCPU', disk: '120 GB' },
+    { id: 'cloud-enterprise', name: 'Enterprise Plan', price: '$16.00', ram: '16 GB', cpu: '3.5 vCPU', disk: '160 GB' },
+    { id: 'cloud-beast', name: 'Beast Plan', price: '$24.00', ram: '24 GB', cpu: '4 vCPU', disk: '240 GB' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#070a11] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
-      {/* HEADER / NAVIGATION */}
-      <header className="border-b border-slate-800/80 bg-[#090d16]/90 backdrop-blur-md sticky top-0 z-40">
+    <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+      
+      {/* ============================================================== */}
+      {/* GLOBAL NAVBAR: APSARA HOSTING (MATCHES SCREENSHOT HEADER)      */}
+      {/* ============================================================== */}
+      <header className="border-b border-slate-800/80 bg-[#080c15]/95 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          
+          {/* Logo & Brand */}
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveView('hosting')}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center font-black text-slate-950 shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition">
-                ⚡
+            <div
+              onClick={() => setCurrentPage('home')}
+              className="flex items-center gap-2.5 cursor-pointer group select-none"
+            >
+              {/* Geometric 'A' Logo matching screenshot */}
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center font-black text-emerald-400 group-hover:scale-105 transition">
+                <span className="text-lg leading-none font-mono">/|</span>
               </div>
               <div>
-                <span className="font-extrabold tracking-wider text-base bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                  MadeTH HOSTING
+                <span className="font-extrabold tracking-wide text-sm text-white flex items-center gap-1.5">
+                  Apsara Hosting
                 </span>
-                <span className="block text-[10px] text-emerald-400 font-mono tracking-widest uppercase font-semibold">
-                  Cloud Bot Engine v2.0
+                <span className="block text-[9px] text-emerald-400 font-bold tracking-wider uppercase">
+                  GAME HOSTING
                 </span>
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
+            {/* Navigation links matching screenshot */}
+            <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-300">
               <button
-                onClick={() => setActiveView('hosting')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 ${
-                  activeView === 'hosting' ? 'bg-slate-800/80 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setCurrentPage('home')}
+                className={`transition ${currentPage === 'home' ? 'text-emerald-400' : 'hover:text-white'}`}
               >
-                <span>✨</span> Hosting Types
+                Hosting
               </button>
               <button
-                onClick={() => setActiveView('servers')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 ${
-                  activeView === 'servers' ? 'bg-slate-800/80 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setCurrentPage('tickets')}
+                className={`transition ${currentPage === 'tickets' ? 'text-emerald-400' : 'hover:text-white'}`}
               >
-                <span>📋</span> My Servers
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-850 text-slate-300 border border-slate-700/60">
-                  {servers.filter(s => s.status === 'running').length} Active
-                </span>
+                Tickets
               </button>
               <button
-                onClick={() => setActiveView('telegram')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 ${
-                  activeView === 'telegram' ? 'bg-slate-800/80 text-cyan-400 font-semibold' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setCurrentPage('hardware')}
+                className={`transition ${currentPage === 'hardware' ? 'text-emerald-400' : 'hover:text-white'}`}
               >
-                <Bot className="w-4 h-4 text-cyan-400" /> Telegram Bot Controller
-              </button>
-              <button
-                onClick={() => setActiveView('wallet')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 ${
-                  activeView === 'wallet' ? 'bg-slate-800/80 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <DollarSign className="w-4 h-4 text-emerald-400" /> Wallet (${wallet.balance?.toFixed(2) || '10.00'})
+                Hardware
               </button>
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Host health badge */}
-            <div className="hidden lg:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Node 01 Online</span>
-              </div>
-              <span className="text-slate-700">|</span>
-              <div className="text-slate-400">
-                RAM: <span className="text-slate-200">{systemStats?.memory?.used || 0} / {systemStats?.memory?.total || 0} MB</span>
-              </div>
+          {/* Right Controls: Language, Cart, Dashboard, User */}
+          <div className="flex items-center gap-3">
+            {/* Language Selector matching screenshot */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span>US</span>
+              <span className="text-[10px] text-slate-500">▼</span>
             </div>
 
-            <button
-              onClick={() => openDeployWithTemplate('telegram-bot-node')}
-              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2"
+            {/* Shopping Cart Button */}
+            <div
+              onClick={() => {
+                if (recentOrderSuccess) setRecentOrderSuccess(null);
+                setCurrentPage('dashboard');
+              }}
+              className="relative p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer transition"
+              title="Cart / Orders"
             >
-              <Plus className="w-4 h-4" /> Deploy Bot / Server
+              <ShoppingCart className="w-4 h-4" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-bold flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+
+            {/* Cyan Dashboard Button matching screenshot */}
+            <button
+              onClick={() => {
+                if (!user) setShowAuthModal(true);
+                else setCurrentPage('dashboard');
+              }}
+              className="px-4 py-2 bg-[#64e4b6] hover:bg-[#52d4a6] text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition flex items-center gap-1.5"
+            >
+              Dashboard
             </button>
+
+            {/* User Profile or Sign In */}
+            {user ? (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-7 h-7 rounded-full bg-slate-800 border border-emerald-500/40"
+                />
+                <button
+                  onClick={handleLogout}
+                  title="Sign Out"
+                  className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setAuthMode('login');
+                  setShowAuthModal(true);
+                }}
+                className="px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+              >
+                Sign In
+              </button>
+            )}
           </div>
+
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
+      {/* ============================================================== */}
+      {/* MAIN CONTAINER BODY (PAGE ROUTER)                              */}
+      {/* ============================================================== */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* ============================================================== */}
-        {/* VIEW 1: HOSTING TYPES (MATCHES SCREENSHOT & ADDS TELEGRAM/DISCORD) */}
-        {/* ============================================================== */}
-        {activeView === 'hosting' && (
+        {/* ------------------------------------------------------------ */}
+        {/* PAGE 1: CHOOSE YOUR HOSTING TYPE (EXACT MATCH IMAGE 1)       */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'home' && (
           <div className="space-y-8 animate-in fade-in duration-200">
-            {/* Top Banner exactly matching the screenshot */}
-            <div className="rounded-2xl p-6 sm:p-8 bg-[#0c101a] border border-slate-800/80 shadow-2xl relative overflow-hidden">
+            
+            {/* Top Banner Box matching Image 1 */}
+            <div className="rounded-2xl p-6 sm:p-8 bg-[#0b0f19] border border-slate-800/80 shadow-2xl relative overflow-hidden">
               <div className="relative z-10 space-y-2">
-                <div className="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-800 text-slate-300 uppercase">
+                <div className="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-850 text-slate-300 uppercase">
                   GET STARTED
                 </div>
                 <p className="text-emerald-400 font-semibold text-sm sm:text-base">
@@ -528,445 +664,880 @@ export default function App() {
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
                   Choose your hosting type
                 </h1>
-                <p className="text-slate-400 text-sm max-w-2xl pt-1">
-                  Choose Minecraft, game, or cloud hosting to start your order. Deploy Telegram bots, Discord bots, APIs, or game servers in minutes.
-                </p>
               </div>
             </div>
 
-            {/* Standard 3 Cards matching the user's uploaded image */}
+            {/* Subtitle & 3 Main Cards */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                  <span>📦</span> Primary Hosting Categories
-                </h2>
-                <span className="text-xs text-slate-400">Choose Minecraft, game, or cloud hosting to start your order.</span>
-              </div>
+              <p className="text-slate-400 text-xs sm:text-sm">
+                Choose Minecraft, game, or cloud hosting to start your order.
+              </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                {/* 1. Minecraft Hosting (Green outline glow matching screenshot) */}
-                <div className="rounded-2xl p-6 bg-[#0c101a] border-2 border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.15)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300">
+                {/* 1. Minecraft Hosting (Green outline glow matching Image 1) */}
+                <div
+                  onClick={() => setCurrentPage('minecraft')}
+                  className="rounded-2xl p-6 bg-[#0b101c] border-2 border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.12)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300 cursor-pointer"
+                >
                   <div>
                     <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-3xl text-emerald-400 mb-5 shadow-lg shadow-emerald-500/10">
                       🟩
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Minecraft Hosting</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
                       Java or Bedrock — pick a plan, set your options, and order in minutes.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-800/80">
-                    <button
-                      onClick={() => openDeployWithTemplate('game-minecraft-paper')}
-                      className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 group-hover:gap-2 transition-all"
-                    >
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 group-hover:gap-2 transition-all">
                       Get started <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </span>
                   </div>
                 </div>
 
-                {/* 2. Game Hosting (Blue outline glow matching screenshot) */}
-                <div className="rounded-2xl p-6 bg-[#0c101a] border-2 border-blue-500/80 shadow-[0_0_25px_rgba(59,130,246,0.15)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300">
+                {/* 2. Game Hosting (Blue outline glow matching Image 1) */}
+                <div
+                  onClick={() => setCurrentPage('games')}
+                  className="rounded-2xl p-6 bg-[#0b101c] border-2 border-blue-500/80 shadow-[0_0_25px_rgba(59,130,246,0.12)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300 cursor-pointer"
+                >
                   <div>
                     <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center text-3xl text-blue-400 mb-5 shadow-lg shadow-blue-500/10">
                       🎮
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Game Hosting</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
                       FiveM, Hytale, Ark, GTA SA-MP, and more game servers.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-800/80">
-                    <button
-                      onClick={() => openDeployWithTemplate('game-minecraft-paper')}
-                      className="text-sm font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1.5 group-hover:gap-2 transition-all"
-                    >
+                    <span className="text-xs font-bold text-blue-400 flex items-center gap-1.5 group-hover:gap-2 transition-all">
                       Get started <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </span>
                   </div>
                 </div>
 
-                {/* 3. Cloud Hosting (Cyan outline glow matching screenshot) */}
-                <div className="rounded-2xl p-6 bg-[#0c101a] border-2 border-cyan-500/80 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300">
+                {/* 3. Cloud Hosting (Cyan outline glow matching Image 1) */}
+                <div
+                  onClick={() => setCurrentPage('cloud')}
+                  className="rounded-2xl p-6 bg-[#0b101c] border-2 border-cyan-500/80 shadow-[0_0_25px_rgba(6,182,212,0.12)] flex flex-col justify-between group hover:-translate-y-1 transition duration-300 cursor-pointer"
+                >
                   <div>
                     <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-3xl text-cyan-400 mb-5 shadow-lg shadow-cyan-500/10">
                       🌐
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Cloud Hosting</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    <p className="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
                       Apps, APIs, Discord bots, and any custom backend stack.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-800/80">
-                    <button
-                      onClick={() => openDeployWithTemplate('cloud-web-node')}
-                      className="text-sm font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 group-hover:gap-2 transition-all"
-                    >
+                    <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5 group-hover:gap-2 transition-all">
                       Get started <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </span>
                   </div>
                 </div>
 
               </div>
             </div>
 
-            {/* Dedicated Bot Hosting Highlights Row */}
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-cyan-400" /> Dedicated Bot Cloud Hosting
-                </h2>
-                <span className="text-xs text-slate-400">Always-On Gateway • Auto-Restart on Crash • Webhooks</span>
+            {/* Dedicated Bots & Quick Access highlight */}
+            <div className="rounded-2xl p-6 bg-gradient-to-r from-[#0d1627] via-[#0b1220] to-[#0d1627] border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-2xl text-cyan-400">
+                  🤖
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Host Telegram Bots &amp; Discord Bots</h3>
+                  <p className="text-xs text-slate-400">Run Python, Node.js, and Java bots 24/7 with zero downtime and automatic crash recovery.</p>
+                </div>
               </div>
+              <button
+                onClick={() => setCurrentPage('cloud')}
+                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition whitespace-nowrap"
+              >
+                Configure Bot Stack →
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------ */}
+        {/* PAGE 2: MINECRAFT SERVER HOSTING (EXACT MATCH IMAGE 2)       */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'minecraft' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* Top Banner Box matching Image 2 */}
+            <div className="rounded-2xl p-6 sm:p-8 bg-[#0b0f19] border border-slate-800/80 shadow-2xl relative">
+              <div className="space-y-2">
+                <div className="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-850 text-slate-300 uppercase">
+                  GET STARTED
+                </div>
+                <p className="text-emerald-400 font-semibold text-sm">
+                  Choose Java or Bedrock, pick a plan, configure your server, and place your order.
+                </p>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+                  Minecraft Server Hosting
+                </h1>
+              </div>
+            </div>
+
+            {/* Back link */}
+            <button
+              onClick={() => setCurrentPage('home')}
+              className="text-xs font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              ← All hosting types
+            </button>
+
+            {/* Section 1: Choose your edition matching Image 2 */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-white">Choose your edition</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* Telegram Bot Hosting Card */}
-                <div className="rounded-2xl p-6 bg-gradient-to-b from-[#0c1424] to-[#0a0f1c] border border-cyan-500/50 shadow-xl flex flex-col justify-between group hover:-translate-y-1 transition duration-300">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shadow-lg shadow-cyan-500/10">
-                        🤖
-                      </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono">
-                        Node.js &amp; Python 3
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Telegram Bot Hosting</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                      Deploy Telegram bots with long-polling or webhooks. Ready starter templates for Telegraf, grammY, and Python aiogram with 24/7 uptime guarantee.
-                    </p>
+                {/* Java Edition Card (Selected with green glow) */}
+                <div
+                  onClick={() => setMinecraftEdition('java')}
+                  className={`rounded-2xl p-6 bg-[#0b101c] border-2 cursor-pointer transition ${
+                    minecraftEdition === 'java'
+                      ? 'border-emerald-500/90 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                      : 'border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-2xl text-emerald-400 mb-4">
+                    🟩
                   </div>
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-mono">Starter from Free / 512MB RAM</span>
-                    <button
-                      onClick={() => openDeployWithTemplate('telegram-bot-node')}
-                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20"
-                    >
-                      Deploy Telegram Bot <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+                    MINECRAFT
+                  </span>
+                  <h3 className="text-lg font-bold text-white mt-1 mb-2">Minecraft Hosting (Java)</h3>
+                  <p className="text-slate-400 text-xs">
+                    Mods, plugins, and full server control for PC players.
+                  </p>
                 </div>
 
-                {/* Discord Bot Hosting Card */}
-                <div className="rounded-2xl p-6 bg-gradient-to-b from-[#140c24] to-[#0f0a1c] border border-purple-500/50 shadow-xl flex flex-col justify-between group hover:-translate-y-1 transition duration-300">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-3xl shadow-lg shadow-purple-500/10">
-                        👾
-                      </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30 font-mono">
-                        Discord.js v14 &amp; Pycord
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">Discord Bot Hosting</h3>
-                    <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                      Always-on Discord Gateway connection with zero downtime, slash command handlers, audio stream support, and instant restart on WebSocket timeouts.
-                    </p>
+                {/* Bedrock Edition Card */}
+                <div
+                  onClick={() => setMinecraftEdition('bedrock')}
+                  className={`rounded-2xl p-6 bg-[#0b101c] border-2 cursor-pointer transition ${
+                    minecraftEdition === 'bedrock'
+                      ? 'border-emerald-500/90 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                      : 'border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-2xl mb-4">
+                    🧱
                   </div>
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-mono">Gateway WebSocket • 512MB - 4GB</span>
-                    <button
-                      onClick={() => openDeployWithTemplate('discord-bot-node')}
-                      className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-purple-500/20"
-                    >
-                      Deploy Discord Bot <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+                    MINECRAFT
+                  </span>
+                  <h3 className="text-lg font-bold text-white mt-1 mb-2">Minecraft Bedorck</h3>
+                  <p className="text-slate-400 text-xs">
+                    Mobile, console, and Windows Bedrock cross-play.
+                  </p>
                 </div>
 
               </div>
             </div>
 
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* VIEW 2: MY HOSTED SERVERS                                       */}
-        {/* ============================================================== */}
-        {activeView === 'servers' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-              <div>
-                <h1 className="text-2xl font-bold text-white">Active Hosted Instances</h1>
-                <p className="text-slate-400 text-sm">Monitor runtime resources, restart crashed services, or open live consoles.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={fetchServers}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                </button>
-                <button
-                  onClick={() => openDeployWithTemplate('telegram-bot-node')}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" /> New Server
-                </button>
-              </div>
-            </div>
-
-            {servers.length === 0 ? (
-              <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 text-3xl">
-                  🤖
+            {/* Section 2: Select your plan + Right Sidebar Order Box */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Plans Grid (2 Columns on large, matching Image 2) */}
+              <div className="lg:col-span-2 space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Select your plan</h2>
+                  <p className="text-xs text-slate-400">Compare price, RAM, CPU, and storage — pick the plan that fits.</p>
                 </div>
-                <h3 className="text-lg font-bold text-slate-200">No bot or cloud instances deployed</h3>
-                <p className="text-slate-400 text-sm mt-1 max-w-md mx-auto">
-                  Pick a Telegram Bot, Discord Bot, or Cloud Service template to get your server online in seconds.
-                </p>
-                <button
-                  onClick={() => setActiveView('hosting')}
-                  className="mt-6 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg shadow-emerald-500/20"
-                >
-                  + Deploy Your First Bot
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {servers.map((server) => {
-                  const isRunning = server.status === 'running';
-                  const isCrashed = server.status === 'crashed';
-                  return (
-                    <div
-                      key={server.id}
-                      className="rounded-2xl p-5 bg-[#0c101a] border border-slate-800 hover:border-slate-700 flex flex-col justify-between shadow-xl transition"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-slate-850 border border-slate-750 flex items-center justify-center text-xl">
-                              {server.category === 'game' ? '🎮' : (server.type === 'telegram' ? '🤖' : (server.type === 'discord' ? '👾' : '🌐'))}
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-slate-100 text-base leading-tight">{server.name}</h3>
-                              <span className="text-[11px] text-slate-400 font-mono">{server.id.slice(0, 8)} • {server.runtime}</span>
-                            </div>
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 font-mono ${
-                            isRunning
-                              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                              : isCrashed
-                              ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
-                              : 'text-slate-400 bg-slate-500/10 border-slate-500/30'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : (isCrashed ? 'bg-amber-400' : 'bg-slate-500')}`} />
-                            {server.status.toUpperCase()}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {minecraftPlans.map(plan => {
+                    const isSelected = selectedMinecraftPlan?.id === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setSelectedMinecraftPlan(plan)}
+                        className={`rounded-xl p-4 bg-[#0a0f1a] border cursor-pointer transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-500/10'
+                            : 'border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <span className="text-xs font-semibold text-slate-300 block">{plan.name}</span>
+                          <span className="text-xl font-extrabold text-emerald-400 font-mono mt-1 block">
+                            {plan.price}
                           </span>
                         </div>
 
-                        {/* Gauges */}
-                        <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 grid grid-cols-3 gap-2 text-center my-4 font-mono text-xs">
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">CPU</span>
-                            <span className="text-slate-200 font-bold">{server.stats?.cpu || 0}%</span>
+                        <div className="pt-4 border-t border-slate-800/80 mt-4 space-y-1.5 text-[11px] font-mono text-slate-400">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">RAM:</span> <span className="text-slate-200 font-semibold">{plan.ram}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">RAM</span>
-                            <span className="text-slate-200 font-bold">{server.stats?.memory || 0} MB</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">CPU:</span> <span className="text-slate-200 font-semibold">{plan.cpu}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-500 block text-[10px]">UPTIME</span>
-                            <span className="text-slate-200 font-bold">{formatUptime(server.stats?.uptime || 0)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">DISK:</span> <span className="text-slate-200 font-semibold">{plan.disk}</span>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/60 mt-2">
-                        <button
-                          onClick={() => {
-                            setSelectedServer(server);
-                            setActiveView('detail');
-                          }}
-                          className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                        >
-                          Open Console →
-                        </button>
-
-                        <div className="flex items-center gap-1.5">
-                          {isRunning ? (
-                            <>
-                              <button
-                                onClick={() => handleServerAction(server.id, 'restart')}
-                                title="Restart"
-                                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                              >
-                                <RotateCw className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleServerAction(server.id, 'stop')}
-                                title="Stop"
-                                className="p-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 transition"
-                              >
-                                <Square className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => handleServerAction(server.id, 'start')}
-                              title="Start"
-                              className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteServer(server.id)}
-                            title="Delete"
-                            className="p-2 rounded-lg bg-slate-800/60 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            )}
+
+              {/* Right Sidebar: YOUR ORDER box matching Image 2 */}
+              <div className="lg:col-span-1">
+                <div className="rounded-2xl p-6 bg-[#0a0f1a] border border-slate-800 sticky top-24 space-y-5">
+                  <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase block">
+                    YOUR ORDER
+                  </span>
+
+                  {selectedMinecraftPlan ? (
+                    <div className="space-y-4">
+                      <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white">{selectedMinecraftPlan.name}</span>
+                          <span className="text-xs font-bold text-emerald-400 font-mono">{selectedMinecraftPlan.price}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 block font-mono">
+                          Edition: Minecraft {minecraftEdition === 'java' ? 'Java' : 'Bedrock'}
+                        </span>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {selectedMinecraftPlan.ram} RAM • {selectedMinecraftPlan.cpu} • {selectedMinecraftPlan.disk}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-800 flex items-center justify-between font-mono">
+                        <span className="text-sm font-bold text-slate-300">Total</span>
+                        <span className="text-xl font-extrabold text-emerald-400">{selectedMinecraftPlan.price}</span>
+                      </div>
+
+                      <button
+                        onClick={() => handlePlaceOrder({
+                          category: 'minecraft',
+                          edition: `Minecraft ${minecraftEdition === 'java' ? 'Java' : 'Bedrock'}`,
+                          plan: selectedMinecraftPlan
+                        })}
+                        className="w-full py-3 bg-[#428073] hover:bg-[#346b60] text-white font-bold text-xs rounded-xl shadow-lg transition"
+                      >
+                        Place order
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Select a plan to continue
+                      </p>
+                      <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-300">Total</span>
+                        <span className="text-slate-600 font-mono">—</span>
+                      </div>
+                      <button
+                        disabled
+                        className="w-full py-3 bg-[#428073]/40 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+                      >
+                        Place order
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* VIEW 3: SERVER DETAIL / LIVE CONSOLE TERMINAL                   */}
-        {/* ============================================================== */}
-        {activeView === 'detail' && selectedServer && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setActiveView('servers')}
-                className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
-              >
-                ← Back to All Servers
-              </button>
-              <span className="text-xs font-mono text-slate-500">{selectedServer.id}</span>
+        {/* ------------------------------------------------------------ */}
+        {/* PAGE 3: GAME SERVER HOSTING (EXACT MATCH IMAGE 3)            */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'games' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* Top Banner Box matching Image 3 */}
+            <div className="rounded-2xl p-6 sm:p-8 bg-[#0b0f19] border border-slate-800/80 shadow-2xl relative">
+              <div className="space-y-2">
+                <div className="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-850 text-slate-300 uppercase">
+                  GET STARTED
+                </div>
+                <p className="text-emerald-400 font-semibold text-sm">
+                  Choose your game to see available plans.
+                </p>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+                  Game Server Hosting
+                </h1>
+              </div>
             </div>
 
-            {/* Server Header Card */}
-            <div className="bg-[#0c101a] border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-white">{selectedServer.name}</h1>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 font-mono ${
-                    selectedServer.status === 'running'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                      : 'text-slate-400 bg-slate-500/10 border-slate-500/30'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${selectedServer.status === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                    {selectedServer.status.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-xs font-mono text-slate-400">{selectedServer.runtime} • {selectedServer.plan?.memory || '512MB'}</p>
+            {/* Back link */}
+            <button
+              onClick={() => setCurrentPage('home')}
+              className="text-xs font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              ← All hosting types
+            </button>
+
+            {/* Popular Games Section with Badge matching Image 3 */}
+            <div className="rounded-2xl p-6 bg-[#090d16] border border-emerald-500/40 relative space-y-4">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span className="px-4 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-[#50d7a7] text-slate-950 shadow-md">
+                  POPULAR GAMES
+                </span>
               </div>
 
-              {/* Gauges */}
-              <div className="flex items-center gap-4 bg-slate-950/60 px-5 py-3 rounded-xl border border-slate-800/80 font-mono text-xs">
-                <div>
-                  <span className="text-slate-500 block text-[10px]">CPU USAGE</span>
-                  <span className="text-slate-200 font-bold text-sm">{selectedServer.stats?.cpu || 0}%</span>
-                </div>
-                <span className="text-slate-800">|</span>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">MEMORY</span>
-                  <span className="text-slate-200 font-bold text-sm">{selectedServer.stats?.memory || 0} MB</span>
-                </div>
-                <span className="text-slate-800">|</span>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">UPTIME</span>
-                  <span className="text-slate-200 font-bold text-sm">{formatUptime(selectedServer.stats?.uptime || 0)}</span>
-                </div>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-2">
-                {selectedServer.status === 'running' ? (
-                  <button
-                    onClick={() => handleServerAction(selectedServer.id, 'stop')}
-                    className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-rose-500/20"
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                {popularGames.map(game => (
+                  <div
+                    key={game.id}
+                    onClick={() => {
+                      if (game.id.includes('mc')) setCurrentPage('minecraft');
+                      else {
+                        setSelectedGame(game);
+                        setSelectedGamePlan(minecraftPlans[1]); // default $2.50 or $5.00
+                      }
+                    }}
+                    className="rounded-2xl overflow-hidden bg-[#0c111e] border border-slate-800 hover:border-emerald-500/80 group cursor-pointer transition shadow-xl"
                   >
-                    <Square className="w-3.5 h-3.5" /> Stop
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleServerAction(selectedServer.id, 'start')}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
-                  >
-                    <Play className="w-3.5 h-3.5" /> Start
-                  </button>
-                )}
-                <button
-                  onClick={() => handleServerAction(selectedServer.id, 'restart')}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
-                >
-                  <RotateCw className="w-3.5 h-3.5" /> Restart
-                </button>
-                <button
-                  onClick={() => handleDeleteServer(selectedServer.id)}
-                  className="p-2 bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-xl transition"
-                  title="Delete"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-2 border-b border-slate-800">
-              <button
-                onClick={() => setDetailTab('console')}
-                className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 border-b-2 ${
-                  detailTab === 'console' ? 'border-emerald-500 text-emerald-400 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-white'
-                }`}
-              >
-                <Terminal className="w-3.5 h-3.5" /> Live Console Terminal
-              </button>
-              <button
-                onClick={() => setDetailTab('files')}
-                className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 border-b-2 ${
-                  detailTab === 'files' ? 'border-emerald-500 text-emerald-400 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-white'
-                }`}
-              >
-                <Folder className="w-3.5 h-3.5" /> File Manager &amp; Editor
-              </button>
-              <button
-                onClick={() => setDetailTab('docker')}
-                className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 border-b-2 ${
-                  detailTab === 'docker' ? 'border-emerald-500 text-emerald-400 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-white'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" /> Cloud Docker / VPS Export
-              </button>
-            </div>
-
-            {/* TAB 1: TERMINAL */}
-            {detailTab === 'console' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-mono font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> WebSocket Stream Active
-                    </span>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={autoScroll}
-                        onChange={(e) => setAutoScroll(e.target.checked)}
-                        className="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0"
+                    <div className="h-44 w-full overflow-hidden relative">
+                      <img
+                        src={game.cover}
+                        alt={game.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       />
-                      <span>Auto-scroll</span>
-                    </label>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c111e] via-transparent to-transparent" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-white text-base">{game.name}</h3>
+                      <span className="text-xs text-slate-400 mt-1 block">
+                        Starting from <strong className="text-emerald-400 font-mono">{game.startingPrice}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* More Games Section matching Image 3 */}
+            <div className="space-y-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                MORE GAMES
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                {moreGames.map(game => (
+                  <div
+                    key={game.id}
+                    onClick={() => {
+                      setSelectedGame(game);
+                      setSelectedGamePlan(minecraftPlans[2]);
+                    }}
+                    className="rounded-2xl overflow-hidden bg-[#0c111e] border border-slate-800 hover:border-blue-500/80 group cursor-pointer transition shadow-xl"
+                  >
+                    <div className="h-36 w-full overflow-hidden relative">
+                      <img
+                        src={game.cover}
+                        alt={game.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c111e] via-transparent to-transparent" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-white text-sm truncate">{game.name}</h3>
+                      <span className="text-xs text-slate-400 mt-1 block">
+                        Starting from <strong className="text-emerald-400 font-mono">{game.startingPrice}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Order Confirmation Drawer if game is selected */}
+            {selectedGame && (
+              <div className="rounded-2xl p-6 bg-[#0a0f1a] border border-emerald-500/60 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-base text-white">Deploy {selectedGame.name} Server</h3>
+                  <button onClick={() => setSelectedGame(null)} className="text-xs text-slate-400 hover:text-white">✕ Close</button>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1 text-xs">
+                    <span className="text-slate-300 font-semibold block">Configured Spec:</span>
+                    <span className="text-emerald-400 font-mono">{selectedGamePlan?.ram || '2 GB'} RAM • {selectedGamePlan?.cpu || '1 vCPU'} • {selectedGamePlan?.disk || '20 GB'}</span>
                   </div>
                   <button
-                    onClick={() => setTerminalLogs([])}
-                    className="hover:text-slate-200 transition"
+                    onClick={() => handlePlaceOrder({
+                      category: 'game',
+                      edition: selectedGame.name,
+                      plan: selectedGamePlan || { name: 'Standard Game Plan', price: selectedGame.startingPrice, ram: '2 GB', cpu: '1 vCPU', disk: '20 GB' }
+                    })}
+                    className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition"
                   >
-                    Clear Logs
+                    Place order ({selectedGame.startingPrice}) →
                   </button>
                 </div>
+              </div>
+            )}
 
-                <div className="rounded-2xl border border-slate-800 overflow-hidden shadow-2xl bg-[#07090e]">
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------ */}
+        {/* PAGE 4: CLOUD HOSTING & BOT RUNTIME (EXACT MATCH IMAGE 4)    */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'cloud' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* Top Banner Box matching Image 4 */}
+            <div className="rounded-2xl p-6 sm:p-8 bg-[#0b0f19] border border-slate-800/80 shadow-2xl relative">
+              <div className="space-y-2">
+                <div className="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-850 text-slate-300 uppercase">
+                  PRODUCTS
+                </div>
+                <p className="text-emerald-400 font-semibold text-xs sm:text-sm max-w-4xl">
+                  With our 42 hours Money Back Guarantee, You Can't Go Wrong! Experience high-quality Any Web Framework, Backend, Discord Bot, Hosting with no risk. Get started today!
+                </p>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white pt-1">
+                  Generic Hosting
+                </h1>
+              </div>
+            </div>
+
+            {/* Back link */}
+            <button
+              onClick={() => setCurrentPage('home')}
+              className="text-xs font-semibold text-cyan-400 hover:underline flex items-center gap-1"
+            >
+              ← All hosting types
+            </button>
+
+            {/* SPECIAL USER REQUEST: CODE STACK SELECTOR FOR TELEGRAM & DISCORD BOTS */}
+            <div className="rounded-2xl p-6 bg-[#0a0f1b] border border-cyan-500/40 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-cyan-400" /> Select Application / Bot Type to Run
+                  </h3>
+                  <p className="text-xs text-slate-400">Choose what you want to host: Telegram bot, Discord bot, or Web Backend.</p>
+                </div>
+                <span className="text-[11px] font-mono text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
+                  24/7 Background Runner
+                </span>
+              </div>
+
+              {/* Step 1: Application Category Tabs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  onClick={() => {
+                    setCloudCategory('telegram');
+                    setCloudRuntime('python');
+                  }}
+                  className={`p-3.5 rounded-xl border text-left transition flex items-center gap-3 ${
+                    cloudCategory === 'telegram'
+                      ? 'border-cyan-500 bg-cyan-950/20 text-white'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="text-2xl">🤖</span>
+                  <div>
+                    <strong className="block text-xs font-bold text-white">Telegram Bot</strong>
+                    <span className="text-[10px] text-slate-400">Long-polling &amp; Webhooks</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCloudCategory('discord');
+                    setCloudRuntime('node');
+                  }}
+                  className={`p-3.5 rounded-xl border text-left transition flex items-center gap-3 ${
+                    cloudCategory === 'discord'
+                      ? 'border-purple-500 bg-purple-950/20 text-white'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="text-2xl">👾</span>
+                  <div>
+                    <strong className="block text-xs font-bold text-white">Discord Bot</strong>
+                    <span className="text-[10px] text-slate-400">Gateway WebSocket</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCloudCategory('web');
+                    setCloudRuntime('node');
+                  }}
+                  className={`p-3.5 rounded-xl border text-left transition flex items-center gap-3 ${
+                    cloudCategory === 'web'
+                      ? 'border-emerald-500 bg-emerald-950/20 text-white'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="text-2xl">🌐</span>
+                  <div>
+                    <strong className="block text-xs font-bold text-white">Web API &amp; Backend</strong>
+                    <span className="text-[10px] text-slate-400">REST APIs &amp; Microservices</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Step 2: Language / Code Runtime Selector */}
+              <div className="space-y-2 pt-2">
+                <span className="text-xs font-semibold text-slate-300 block">
+                  Select Code Language / Runtime:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setCloudRuntime('python')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      cloudRuntime === 'python'
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                        : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>🐍</span> Python (aiogram / telebot / fastapi)
+                  </button>
+
+                  <button
+                    onClick={() => setCloudRuntime('node')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      cloudRuntime === 'node'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                        : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>🟢</span> Node.js (Telegraf / discord.js / express)
+                  </button>
+
+                  <button
+                    onClick={() => setCloudRuntime('java')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      cloudRuntime === 'java'
+                        ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                        : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>☕</span> Java (JDA / telegram-bot-api / spring)
+                  </button>
+
+                  <button
+                    onClick={() => setCloudRuntime('custom')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      cloudRuntime === 'custom'
+                        ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>🐳</span> Custom Docker / Any Stack
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Plans Grid + Sticky Order Sidebar matching Image 4 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Plans Grid (9 plans matching Image 4) */}
+              <div className="lg:col-span-2 space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Select your plan</h2>
+                  <p className="text-xs text-slate-400">Compare price, RAM, CPU, and storage — pick the plan that fits.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {cloudPlans.map(plan => {
+                    const isSelected = selectedCloudPlan?.id === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setSelectedCloudPlan(plan)}
+                        className={`rounded-xl p-4 bg-[#0a0f1a] border cursor-pointer transition flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-500/10'
+                            : 'border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div>
+                          <span className="text-xs font-semibold text-slate-300 block">{plan.name}</span>
+                          <span className="text-xl font-extrabold text-emerald-400 font-mono mt-1 block">
+                            {plan.price}
+                          </span>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-800/80 mt-4 space-y-1.5 text-[11px] font-mono text-slate-400">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">RAM:</span> <span className="text-slate-200 font-semibold">{plan.ram}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">CPU:</span> <span className="text-slate-200 font-semibold">{plan.cpu}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">DISK:</span> <span className="text-slate-200 font-semibold">{plan.disk}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Sidebar: YOUR ORDER box matching Image 4 */}
+              <div className="lg:col-span-1">
+                <div className="rounded-2xl p-6 bg-[#0a0f1a] border border-slate-800 sticky top-24 space-y-5">
+                  <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase block">
+                    YOUR ORDER
+                  </span>
+
+                  {selectedCloudPlan ? (
+                    <div className="space-y-4">
+                      <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white">{selectedCloudPlan.name}</span>
+                          <span className="text-xs font-bold text-emerald-400 font-mono">{selectedCloudPlan.price}</span>
+                        </div>
+                        <span className="text-[11px] text-cyan-400 block font-mono">
+                          Runtime: {cloudCategory.toUpperCase()} • {cloudRuntime.toUpperCase()}
+                        </span>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {selectedCloudPlan.ram} RAM • {selectedCloudPlan.cpu} • {selectedCloudPlan.disk}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-800 flex items-center justify-between font-mono">
+                        <span className="text-sm font-bold text-slate-300">Total</span>
+                        <span className="text-xl font-extrabold text-emerald-400">{selectedCloudPlan.price}</span>
+                      </div>
+
+                      <button
+                        onClick={() => handlePlaceOrder({
+                          category: cloudCategory,
+                          edition: `${cloudCategory.toUpperCase()} (${cloudRuntime})`,
+                          plan: selectedCloudPlan,
+                          runtime: cloudRuntime === 'python' ? 'python' : 'node'
+                        })}
+                        className="w-full py-3 bg-[#428073] hover:bg-[#346b60] text-white font-bold text-xs rounded-xl shadow-lg transition"
+                      >
+                        Place order
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Select a plan to continue
+                      </p>
+                      <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-300">Total</span>
+                        <span className="text-slate-600 font-mono">—</span>
+                      </div>
+                      <button
+                        disabled
+                        className="w-full py-3 bg-[#428073]/40 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed"
+                      >
+                        Place order
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------ */}
+        {/* DASHBOARD: MY SERVERS, CONSOLE TERMINAL & TELEGRAM CONTROLLER */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'dashboard' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Client Management Dashboard</h1>
+                <p className="text-xs text-slate-400 mt-1">Manage your active hosted bots, game servers, live terminal consoles, and Telegram bot controller.</p>
+              </div>
+
+              {/* Navigation tabs */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDashboardTab('servers')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    dashboardTab === 'servers' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Active Servers ({servers.length})
+                </button>
+                <button
+                  onClick={() => setDashboardTab('telegram')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                    dashboardTab === 'telegram' ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Bot className="w-3.5 h-3.5" /> Telegram Controller
+                </button>
+              </div>
+            </div>
+
+            {/* TAB: SERVERS LIST */}
+            {dashboardTab === 'servers' && (
+              <div className="space-y-6">
+                {servers.length === 0 ? (
+                  <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40 space-y-4">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-800 flex items-center justify-center text-3xl">
+                      🚀
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">No active servers yet</h3>
+                      <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                        Choose a hosting plan from Minecraft, Game Hosting, or Cloud Hosting to launch your server.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage('home')}
+                      className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+                    >
+                      Browse Hosting Plans →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {servers.map(server => {
+                      const isRunning = server.status === 'running';
+                      return (
+                        <div
+                          key={server.id}
+                          className="rounded-2xl p-5 bg-[#0b0f1a] border border-slate-800 flex flex-col justify-between shadow-xl"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-bold text-white text-base leading-tight">{server.name}</h3>
+                                <span className="text-[11px] font-mono text-slate-500">{server.id.slice(0, 8)} • {server.runtime}</span>
+                              </div>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                                isRunning ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+                              }`}>
+                                {server.status.toUpperCase()}
+                              </span>
+                            </div>
+
+                            <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 grid grid-cols-3 gap-2 text-center my-4 font-mono text-xs">
+                              <div>
+                                <span className="text-slate-500 block text-[10px]">CPU</span>
+                                <span className="text-slate-200 font-bold">{server.stats?.cpu || 0}%</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-[10px]">RAM</span>
+                                <span className="text-slate-200 font-bold">{server.stats?.memory || 0} MB</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block text-[10px]">UPTIME</span>
+                                <span className="text-slate-200 font-bold">{server.stats?.uptime || 0}s</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-800/80">
+                            <button
+                              onClick={() => {
+                                setSelectedServer(server);
+                                setDashboardTab('console');
+                              }}
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                            >
+                              Open Console →
+                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {isRunning ? (
+                                <>
+                                  <button
+                                    onClick={() => handleServerAction(server.id, 'restart')}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                    title="Restart"
+                                  >
+                                    <RotateCw className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleServerAction(server.id, 'stop')}
+                                    className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                                    title="Stop"
+                                  >
+                                    <Square className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleServerAction(server.id, 'start')}
+                                  className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                                  title="Start"
+                                >
+                                  <Play className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteServer(server.id)}
+                                className="p-1.5 rounded-lg bg-slate-800/60 hover:text-rose-400 text-slate-500"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: LIVE CONSOLE TERMINAL */}
+            {dashboardTab === 'console' && selectedServer && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setDashboardTab('servers')}
+                      className="text-xs font-bold text-slate-400 hover:text-white"
+                    >
+                      ← Back
+                    </button>
+                    <span className="text-slate-700">|</span>
+                    <h3 className="font-bold text-white text-sm">{selectedServer.name}</h3>
+                    <span className="text-xs font-mono text-emerald-400 font-semibold">{selectedServer.status.toUpperCase()}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {selectedServer.status === 'running' ? (
+                      <button
+                        onClick={() => handleServerAction(selectedServer.id, 'stop')}
+                        className="px-3 py-1 bg-rose-500 text-white font-bold text-xs rounded-lg"
+                      >
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleServerAction(selectedServer.id, 'start')}
+                        className="px-3 py-1 bg-emerald-500 text-slate-950 font-bold text-xs rounded-lg"
+                      >
+                        Start
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleServerAction(selectedServer.id, 'restart')}
+                      className="px-3 py-1 bg-slate-800 text-slate-200 font-bold text-xs rounded-lg"
+                    >
+                      Restart
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-[#07090e] overflow-hidden shadow-2xl">
                   <div
                     ref={terminalRef}
                     className="h-96 p-4 overflow-y-auto space-y-1 font-mono text-xs leading-relaxed"
@@ -976,12 +1547,11 @@ export default function App() {
                       const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '';
                       const isError = text.includes('[ERROR]') || text.includes('[STDERR]') || text.includes('FAILED');
                       const isOnline = text.includes('[ONLINE]') || text.includes('listening');
-                      const isSystem = text.includes('[SYSTEM]') || text.includes('[SANDBOX');
 
                       return (
                         <div key={index} className="py-0.5 break-all">
                           {timeStr && <span className="text-slate-600 mr-2">[{timeStr}]</span>}
-                          <span className={isError ? 'text-rose-400' : (isOnline ? 'text-emerald-400 font-semibold' : (isSystem ? 'text-cyan-400' : 'text-slate-300'))}>
+                          <span className={isError ? 'text-rose-400' : (isOnline ? 'text-emerald-400 font-semibold' : 'text-slate-300')}>
                             {text}
                           </span>
                         </div>
@@ -995,12 +1565,12 @@ export default function App() {
                       type="text"
                       value={terminalInput}
                       onChange={(e) => setTerminalInput(e.target.value)}
-                      placeholder="Send command or stdin to running instance..."
-                      className="flex-1 bg-transparent border-none text-xs font-mono text-slate-200 outline-none focus:ring-0 placeholder:text-slate-600"
+                      placeholder="Send stdin command to process..."
+                      className="flex-1 bg-transparent border-none text-xs font-mono text-slate-200 outline-none placeholder:text-slate-600"
                     />
                     <button
                       type="submit"
-                      className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-lg transition"
+                      className="px-3.5 py-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-lg"
                     >
                       Send
                     </button>
@@ -1009,202 +1579,83 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: FILE MANAGER & EDITOR */}
-            {detailTab === 'files' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#0c101a] border border-slate-800 rounded-2xl p-4">
-                <div className="md:col-span-1 border-r border-slate-800 pr-4 space-y-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                    <span className="text-xs font-bold text-slate-300">Project Files</span>
-                    <button onClick={() => loadFiles(selectedServer.id)} className="text-xs text-emerald-400 hover:underline">
-                      Refresh
-                    </button>
-                  </div>
-                  <div className="space-y-1 max-h-96 overflow-y-auto">
-                    {filesList.map((f, i) => (
-                      <div
-                        key={i}
-                        onClick={() => f.type === 'file' && openFile(selectedServer.id, f.path)}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-mono transition ${
-                          selectedFile === f.path ? 'bg-slate-850 text-emerald-400 font-semibold border border-emerald-500/30' : 'hover:bg-slate-900 text-slate-300'
-                        }`}
+            {/* TAB: TELEGRAM CONTROLLER & SIMULATOR */}
+            {dashboardTab === 'telegram' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Connect Real Token */}
+                <div className="rounded-2xl p-6 bg-[#0a0f1b] border border-slate-800 space-y-4">
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-cyan-400" /> Telegram Remote Controller
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Control and restart your servers straight from Telegram on your phone! Get a bot token from <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold">@BotFather</a>.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-300 block">Telegram Bot Token</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={tgToken}
+                        onChange={(e) => setTgToken(e.target.value)}
+                        placeholder="7123456789:AAFg84..."
+                        className="flex-1 bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 outline-none"
+                      />
+                      <button
+                        onClick={async () => {
+                          const res = await fetch('/api/telegram/config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: tgToken.trim() })
+                          });
+                          const data = await res.json();
+                          alert(data.message || 'Updated token');
+                          fetchTgStatus();
+                        }}
+                        className="px-4 py-2 bg-cyan-500 text-slate-950 font-bold text-xs rounded-xl"
                       >
-                        <span className="flex items-center gap-2 truncate">
-                          <span>{f.type === 'directory' ? '📁' : '📄'}</span>
-                          <span className="truncate">{f.name}</span>
-                        </span>
-                        {f.size && <span className="text-[10px] text-slate-500">{(f.size / 1024).toFixed(1)}KB</span>}
+                        Connect
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-xs space-y-1.5 text-slate-400">
+                    <strong className="text-slate-300 block mb-1">Bot Commands:</strong>
+                    <div><span className="text-cyan-400">/start</span> - Main Menu</div>
+                    <div><span className="text-cyan-400">/servers</span> - List &amp; Restart instances</div>
+                    <div><span className="text-cyan-400">/deploy</span> - 1-Click deploy wizard</div>
+                    <div><span className="text-cyan-400">/sys</span> - CPU &amp; RAM health</div>
+                  </div>
+                </div>
+
+                {/* Interactive Telegram Phone Simulator */}
+                <div className="rounded-2xl border border-slate-800 bg-[#090d16] overflow-hidden flex flex-col h-[480px] shadow-2xl">
+                  <div className="px-4 py-3 bg-[#0d1320] border-b border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-sm font-bold text-cyan-400">
+                        🤖
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-emerald-400">{selectedFile || 'Select a file to edit'}</span>
-                    <button
-                      onClick={saveFile}
-                      className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition"
-                    >
-                      Save File
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Apsara Bot Simulator</h4>
+                        <span className="text-[10px] text-emerald-400 font-mono">Live Sandbox Playground</span>
+                      </div>
+                    </div>
+                    <button onClick={() => handleSimSend('/start')} className="text-[11px] text-cyan-400 hover:underline">
+                      Reset
                     </button>
                   </div>
-                  <textarea
-                    value={fileContent}
-                    onChange={(e) => setFileContent(e.target.value)}
-                    rows={18}
-                    className="w-full bg-[#070a11] border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 outline-none focus:border-emerald-500 resize-none"
-                    placeholder="File content..."
-                  />
-                </div>
-              </div>
-            )}
 
-            {/* TAB 3: DOCKER EXPORT */}
-            {detailTab === 'docker' && (
-              <div className="bg-[#0c101a] border border-slate-800 rounded-2xl p-6 space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>🐳</span> Production Docker Export
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Export your server to run in production on any VPS or Docker Swarm/Kubernetes cluster.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <span className="text-xs font-mono font-semibold text-slate-300">Dockerfile</span>
-                    <pre className="p-3 bg-[#07090e] border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto h-64">
-                      {dockerConfigs.dockerfile}
-                    </pre>
-                  </div>
-                  <div className="space-y-2">
-                    <span className="text-xs font-mono font-semibold text-slate-300">docker-compose.yml</span>
-                    <pre className="p-3 bg-[#07090e] border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto h-64">
-                      {dockerConfigs.dockerCompose}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* VIEW 4: TELEGRAM BOT REMOTE CONTROLLER & IN-BROWSER SIMULATOR   */}
-        {/* ============================================================== */}
-        {activeView === 'telegram' && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            
-            {/* Top Telegram Hub Header */}
-            <div className="rounded-2xl p-6 sm:p-8 bg-[#0c101a] border border-slate-800 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl text-cyan-400">
-                  🤖
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white">Telegram Remote Bot Management</h1>
-                  <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                    Connect your real Telegram bot via @BotFather to control everything on your phone, or test it directly using the Interactive Simulator below!
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-2 font-mono ${
-                  tgStatus.enabled
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                    : 'bg-slate-850 text-slate-400 border-slate-750'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${tgStatus.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                  {tgStatus.enabled ? 'ONLINE & POLLING' : 'STANDBY'}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Panel A: Real BotFather Token Configuration */}
-              <div className="rounded-2xl p-6 bg-[#0c101a] border border-slate-800 space-y-5">
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <span>🔑</span> Connect Live Telegram Bot
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Get an API token from <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-cyan-400 underline font-semibold">@BotFather</a> and paste it here.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-300">Bot Token</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={tgTokenInput}
-                      onChange={(e) => setTgTokenInput(e.target.value)}
-                      placeholder="e.g. 7123456789:AAFg84..."
-                      className="flex-1 bg-slate-900 border border-slate-750 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-200 outline-none focus:border-cyan-500"
-                    />
-                    <button
-                      onClick={handleSaveTgToken}
-                      className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition shadow-md shadow-cyan-500/20"
-                    >
-                      Connect
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2 text-xs font-mono">
-                  <span className="text-slate-400 font-bold block mb-1">Supported Bot Commands:</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-300">
-                    <div><code className="text-cyan-400">/start</code> - Main interactive menu</div>
-                    <div><code className="text-cyan-400">/plans</code> - Browse hosting tiers</div>
-                    <div><code className="text-cyan-400">/deploy</code> - 1-Click order wizard</div>
-                    <div><code className="text-cyan-400">/servers</code> - List &amp; restart servers</div>
-                    <div><code className="text-cyan-400">/sys</code> - Host CPU &amp; RAM health</div>
-                    <div><code className="text-cyan-400">/wallet</code> - View $10 balance</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Panel B: Live In-Browser Telegram Simulator */}
-              <div className="rounded-2xl border border-slate-800 bg-[#0a0e17] overflow-hidden flex flex-col h-[520px] shadow-2xl">
-                {/* Chat Top Bar */}
-                <div className="px-4 py-3 bg-[#0d1320] border-b border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-sm font-bold text-cyan-400">
-                      ✈️
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">MadeTH Hosting Bot</h4>
-                      <span className="text-[10px] text-emerald-400 font-mono">bot • interactive sandbox</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleSimSend('/start')}
-                    className="text-[11px] font-semibold text-cyan-400 hover:underline"
-                  >
-                    Reset (/start)
-                  </button>
-                </div>
-
-                {/* Chat Messages Body */}
-                <div ref={simChatRef} className="flex-1 p-4 overflow-y-auto space-y-3 font-sans text-xs">
-                  {simMessages.map((m) => {
-                    const isBot = m.sender === 'bot';
-                    return (
-                      <div key={m.id} className={`flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
+                  <div ref={simChatRef} className="flex-1 p-4 overflow-y-auto space-y-3 font-sans text-xs">
+                    {simMessages.map(m => (
+                      <div key={m.id} className={`flex flex-col ${m.sender === 'bot' ? 'items-start' : 'items-end'}`}>
                         <div className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
-                          isBot
-                            ? 'bg-[#141b2a] border border-slate-800 text-slate-200'
-                            : 'bg-emerald-600 text-slate-950 font-medium'
+                          m.sender === 'bot' ? 'bg-[#141b2a] border border-slate-800 text-slate-200' : 'bg-emerald-600 text-slate-950 font-medium'
                         }`}>
                           <div className="whitespace-pre-line">{m.text}</div>
                         </div>
 
-                        {/* Inline Keyboard Buttons */}
-                        {isBot && m.reply_markup?.inline_keyboard && (
+                        {m.sender === 'bot' && m.reply_markup?.inline_keyboard && (
                           <div className="mt-2 space-y-1 w-[85%]">
                             {m.reply_markup.inline_keyboard.map((row, rIdx) => (
                               <div key={rIdx} className="flex gap-1.5 flex-wrap">
@@ -1212,7 +1663,7 @@ export default function App() {
                                   <button
                                     key={bIdx}
                                     onClick={() => handleSimSend(null, btn.callback_data)}
-                                    className="flex-1 px-3 py-1.5 bg-[#1b253b] hover:bg-cyan-600/30 text-cyan-300 hover:text-white rounded-lg border border-cyan-500/20 text-[11px] font-semibold transition active:scale-95"
+                                    className="flex-1 px-3 py-1.5 bg-[#1b253b] hover:bg-cyan-600/30 text-cyan-300 hover:text-white rounded-lg border border-cyan-500/20 text-[11px] font-semibold transition"
                                   >
                                     {btn.text}
                                   </button>
@@ -1222,91 +1673,121 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    ))}
+                    {simLoading && <div className="text-slate-500 text-xs italic">Bot typing...</div>}
+                  </div>
 
-                  {simLoading && (
-                    <div className="flex items-center gap-1.5 text-slate-500 text-xs italic">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" /> Bot is replying...
-                    </div>
-                  )}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSimSend();
+                    }}
+                    className="p-2.5 bg-[#0d1320] border-t border-slate-800 flex items-center gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={simInput}
+                      onChange={(e) => setSimInput(e.target.value)}
+                      placeholder="Type /start, /plans, or /servers..."
+                      className="flex-1 bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none"
+                    />
+                    <button type="submit" className="p-2 bg-cyan-500 text-slate-950 rounded-xl font-bold">
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
                 </div>
 
-                {/* Chat Input Bar */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSimSend();
-                  }}
-                  className="p-2.5 bg-[#0d1320] border-t border-slate-800 flex items-center gap-2"
-                >
-                  <input
-                    type="text"
-                    value={simInput}
-                    onChange={(e) => setSimInput(e.target.value)}
-                    placeholder="Type /start, /plans, /servers or message..."
-                    className="flex-1 bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500 placeholder:text-slate-600"
-                  />
-                  <button
-                    type="submit"
-                    className="p-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
               </div>
-
-            </div>
+            )}
 
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* VIEW 5: WALLET & BILLING                                        */}
-        {/* ============================================================== */}
-        {activeView === 'wallet' && (
-          <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
-            <div className="rounded-2xl p-8 bg-[#0c101a] border border-slate-800 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        {/* ------------------------------------------------------------ */}
+        {/* TICKETS PAGE                                                 */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'tickets' && (
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-slate-400">Hosting Account Balance</span>
-                <div className="text-4xl font-extrabold text-emerald-400 mt-1 font-mono">
-                  ${wallet.balance?.toFixed(2) || '10.00'} <span className="text-sm text-slate-400 font-sans font-normal">USD</span>
+                <h1 className="text-2xl font-bold text-white">Support Tickets</h1>
+                <p className="text-xs text-slate-400 mt-1">24/7 technical support from our engineering team in Phnom Penh.</p>
+              </div>
+            </div>
+
+            {/* Create Ticket Form */}
+            <div className="rounded-2xl p-6 bg-[#0a0f1b] border border-slate-800 space-y-3">
+              <h3 className="text-sm font-bold text-white">Open a Support Ticket</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTicketSubject}
+                  onChange={(e) => setNewTicketSubject(e.target.value)}
+                  placeholder="Describe your issue or request..."
+                  className="flex-1 bg-slate-900 border border-slate-750 rounded-xl px-4 py-2 text-xs text-slate-200 outline-none"
+                />
+                <button
+                  onClick={() => {
+                    if (!newTicketSubject.trim()) return;
+                    setTickets(prev => [
+                      { id: `TICK-${Date.now().toString().slice(-3)}`, subject: newTicketSubject.trim(), status: 'Open', priority: 'Normal', date: new Date().toLocaleDateString() },
+                      ...prev
+                    ]);
+                    setNewTicketSubject('');
+                    alert('Support ticket created! An engineer will reply shortly.');
+                  }}
+                  className="px-5 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+
+            {/* Ticket List */}
+            <div className="rounded-2xl bg-[#0a0f1b] border border-slate-800 divide-y divide-slate-800/80 overflow-hidden">
+              {tickets.map(t => (
+                <div key={t.id} className="p-4 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-mono text-emerald-400 font-bold mr-2">{t.id}</span>
+                    <strong className="text-white">{t.subject}</strong>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">{t.date} • Priority: {t.priority}</span>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                    t.status === 'Open' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-300'
+                  }`}>
+                    {t.status}
+                  </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  All starter tier bots are completely free. Pro plans auto-renew monthly from your credit balance.
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------ */}
+        {/* HARDWARE PAGE                                                */}
+        {/* ------------------------------------------------------------ */}
+        {currentPage === 'hardware' && (
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+            <div className="pb-4 border-b border-slate-800">
+              <h1 className="text-2xl font-bold text-white">Hardware &amp; Infrastructure</h1>
+              <p className="text-xs text-slate-400 mt-1">Enterprise-grade servers, low latency fiber network, and high tick-rate performance.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="rounded-2xl p-6 bg-[#0a0f1b] border border-slate-800 space-y-3">
+                <span className="text-xs font-bold text-emerald-400 font-mono uppercase">Compute Nodes</span>
+                <h3 className="text-lg font-bold text-white">AMD Ryzen 9 &amp; Intel Xeon E-2388G</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  High clock speed up to 5.4 GHz ensuring zero tick drops in Minecraft and instant response times for Telegram and Discord bot webhooks.
                 </p>
               </div>
 
-              <button
-                onClick={async () => {
-                  await fetch('/api/wallet/credit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: 5.0, desc: 'Demo testing credits' })
-                  });
-                  fetchWallet();
-                  alert('Added $5.00 demo balance!');
-                }}
-                className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Add Free $5.00 Demo Credits
-              </button>
-            </div>
-
-            <div className="rounded-2xl p-6 bg-[#0c101a] border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-white">Recent Transactions</h3>
-              <div className="divide-y divide-slate-850">
-                {wallet.transactions?.map((tx) => (
-                  <div key={tx.id} className="py-3 flex items-center justify-between text-xs">
-                    <div>
-                      <div className="font-semibold text-slate-200">{tx.desc}</div>
-                      <div className="text-slate-500 text-[11px] font-mono">{new Date(tx.date).toLocaleString()}</div>
-                    </div>
-                    <span className={`font-mono font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {tx.amount >= 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
-                    </span>
-                  </div>
-                ))}
+              <div className="rounded-2xl p-6 bg-[#0a0f1b] border border-slate-800 space-y-3">
+                <span className="text-xs font-bold text-cyan-400 font-mono uppercase">Storage &amp; Network</span>
+                <h3 className="text-lg font-bold text-white">Gen4 NVMe SSDs • 10 Gbps Uplink</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Blazing-fast read/write operations with automated DDoS mitigation up to 1.2 Tbps protecting against multi-vector floods.
+                </p>
               </div>
             </div>
           </div>
@@ -1315,108 +1796,356 @@ export default function App() {
       </main>
 
       {/* ============================================================== */}
-      {/* MODAL: DEPLOY INSTANCE WIZARD                                  */}
+      {/* ORDER SUCCESS MODAL                                            */}
       {/* ============================================================== */}
-      {isDeployOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0c111d] border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <span>⚡</span> Configure &amp; Deploy Server
-              </h3>
-              <button onClick={() => setIsDeployOpen(false)} className="text-slate-400 hover:text-white p-1">✕</button>
+      {recentOrderSuccess && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0b101c] border border-emerald-500/80 rounded-2xl w-full max-w-md p-6 space-y-5 text-center animate-in zoom-in-95 duration-200 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto text-3xl">
+              ✓
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Order Confirmed!</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Your server has been automatically provisioned on Apsara Hosting Cloud.
+              </p>
             </div>
 
-            <form onSubmit={handleDeploySubmit} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-300">Choose Starter Template</label>
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setSelectedTemplateId(id);
-                    const t = templates.find(item => item.id === id);
-                    if (t) {
-                      setDeployName(`${t.name} #1`);
-                      setDeployEnv(t.envVars || {});
-                    }
-                  }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 outline-none focus:border-emerald-500"
-                >
-                  {templates.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.badge || t.runtime})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-left font-mono text-xs space-y-1.5">
+              <div><span className="text-slate-500">Instance:</span> <span className="text-white font-bold">{recentOrderSuccess.server?.name}</span></div>
+              <div><span className="text-slate-500">Plan:</span> <span className="text-emerald-400 font-bold">{recentOrderSuccess.order?.planName}</span></div>
+              <div><span className="text-slate-500">Status:</span> <span className="text-emerald-400">🟢 ONLINE &amp; RUNNING</span></div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-300">Server Instance Name</label>
-                <input
-                  type="text"
-                  value={deployName}
-                  onChange={(e) => setDeployName(e.target.value)}
-                  placeholder="My Telegram Bot #1"
-                  required
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-300">Resource Allocation</label>
-                <select
-                  value={deployPlan}
-                  onChange={(e) => setDeployPlan(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 outline-none focus:border-emerald-500"
-                >
-                  <option value="512">Starter: 512 MB RAM • 0.5 vCPU (Free)</option>
-                  <option value="2048">Pro: 2048 MB RAM • 1.0 vCPU ($2.99/mo)</option>
-                  <option value="4096">Enterprise: 4096 MB RAM • 2.0 vCPU ($5.99/mo)</option>
-                </select>
-              </div>
-
-              {/* Dynamic Env Vars (Bot token, etc.) */}
-              {Object.keys(deployEnv).length > 0 && (
-                <div className="space-y-3 pt-2 border-t border-slate-800">
-                  {Object.entries(deployEnv).map(([key, val]) => (
-                    <div key={key} className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-300 font-mono">{key}</label>
-                      <input
-                        type={key.includes('TOKEN') ? 'password' : 'text'}
-                        value={val}
-                        onChange={(e) => setDeployEnv({ ...deployEnv, [key]: e.target.value })}
-                        placeholder={key.includes('TOKEN') ? 'Enter token or "demo" for sandbox' : `Enter ${key}`}
-                        className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none font-mono"
-                      />
-                      {key.includes('TOKEN') && (
-                        <p className="text-[11px] text-slate-400">Leave empty or type "demo" to launch in test sandbox mode.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsDeployOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isDeploying}
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5"
-                >
-                  {isDeploying ? 'Launching...' : '⚡ Launch Server Now'}
-                </button>
-              </div>
-            </form>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedServer(recentOrderSuccess.server);
+                  setRecentOrderSuccess(null);
+                  setCurrentPage('dashboard');
+                  setDashboardTab('console');
+                }}
+                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition"
+              >
+                Open Live Console →
+              </button>
+              <button
+                onClick={() => setRecentOrderSuccess(null)}
+                className="px-4 py-2.5 bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl hover:text-white"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ============================================================== */}
+      {/* AUTH MODAL: GOOGLE / GMAIL LOGIN & VERIFY CODE                 */}
+      {/* ============================================================== */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0b101c] border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">/|</span>
+                <span className="font-bold text-sm text-white">Apsara Hosting Account</span>
+              </div>
+              <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-white p-1">✕</button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              
+              {/* Google 1-Click Login Button */}
+              <button
+                onClick={handleGoogleLogin}
+                disabled={authLoading}
+                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs transition flex items-center justify-center gap-2 shadow"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                Continue with Google Gmail
+              </button>
+
+              <div className="flex items-center gap-2 my-2">
+                <div className="flex-1 h-px bg-slate-800" />
+                <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">or email &amp; password</span>
+                <div className="flex-1 h-px bg-slate-800" />
+              </div>
+
+              {/* Toast info if code sent */}
+              {authToast && (
+                <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 text-xs font-mono">
+                  {authToast}
+                </div>
+              )}
+
+              {/* Mode 1: Login Form */}
+              {authMode === 'login' && (
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Gmail / Email</label>
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="name@gmail.com"
+                      required
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Password</label>
+                    <input
+                      type="password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition"
+                  >
+                    {authLoading ? 'Signing in...' : 'Sign In'}
+                  </button>
+
+                  <div className="pt-2 text-center text-xs text-slate-400">
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('register')}
+                      className="text-emerald-400 font-bold hover:underline"
+                    >
+                      Create an account
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Mode 2: Register Form (triggers Gmail verification code) */}
+              {authMode === 'register' && (
+                <form onSubmit={handleSendVerificationCode} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Full Name</label>
+                    <input
+                      type="text"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      placeholder="Sophea Chea"
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Gmail Address</label>
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="yourname@gmail.com"
+                      required
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Password</label>
+                    <input
+                      type="password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      required
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {authLoading ? 'Sending code...' : 'Send Verification Code to Gmail'}
+                  </button>
+
+                  <div className="pt-2 text-center text-xs text-slate-400">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('login')}
+                      className="text-emerald-400 font-bold hover:underline"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Mode 3: 6-Digit Code Verification Screen */}
+              {authMode === 'verify' && (
+                <form onSubmit={handleVerifyAndRegister} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300 block">Enter 6-Digit Verification Code</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      placeholder="123456"
+                      required
+                      className="w-full bg-slate-900 border border-slate-750 rounded-xl px-4 py-3 text-center text-xl font-mono tracking-widest text-emerald-400 outline-none focus:border-emerald-500"
+                    />
+                    <p className="text-[11px] text-slate-400 text-center pt-1">
+                      Check your Gmail inbox ({authEmail}) for the 6-digit confirmation code.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {authLoading ? 'Verifying...' : 'Verify &amp; Create Account'}
+                  </button>
+
+                  <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('register')}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      ← Change Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendVerificationCode}
+                      className="text-cyan-400 hover:underline"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+                </form>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* GLOBAL FOOTER: APSARA HOSTING (MATCHES SCREENSHOT EXACTLY)     */}
+      {/* ============================================================== */}
+      <footer className="border-t border-slate-800/80 bg-[#080c14] mt-16 pt-12 pb-8 text-xs text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+            
+            {/* Column 1: Apsara Hosting Brand & Cambodia Location */}
+            <div className="md:col-span-2 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-xs font-mono font-bold text-emerald-400">
+                  /|
+                </div>
+                <span className="font-extrabold text-sm text-white">Apsara Hosting</span>
+              </div>
+              <p className="text-slate-400 leading-relaxed text-xs max-w-sm">
+                The cheapest and most reliable hosting provider. Specializing in game servers with 24/7 support starting from $0.50/month.
+              </p>
+              
+              <div className="space-y-1 text-xs pt-1 text-slate-400">
+                <div className="flex items-center gap-2">
+                  <span>📍</span> <span>Phnom Penh, Cambodia</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>✉️</span> <a href="mailto:support@apsarahosting.com" className="hover:text-emerald-400">Contact Support</a>
+                </div>
+              </div>
+
+              {/* Follow Us Social Icons matching Image 1 */}
+              <div className="pt-2 space-y-2">
+                <span className="text-[11px] font-bold text-slate-300 block">Follow Us</span>
+                <div className="flex items-center gap-2">
+                  <a href="https://discord.gg" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-white transition">
+                    👾
+                  </a>
+                  <a href="https://t.me" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-white transition">
+                    ✈️
+                  </a>
+                  <a href="https://facebook.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-white transition">
+                    📘
+                  </a>
+                  <a href="https://youtube.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-white transition">
+                    ▶️
+                  </a>
+                  <a href="https://tiktok.com" target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:text-white transition">
+                    🎵
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Products matching Image 1 */}
+            <div className="space-y-2.5">
+              <span className="font-bold text-white block">Products</span>
+              <ul className="space-y-2">
+                <li><button onClick={() => { setMinecraftEdition('java'); setCurrentPage('minecraft'); }} className="hover:text-emerald-400">Minecraft Hosting (Java)</button></li>
+                <li><button onClick={() => { setMinecraftEdition('bedrock'); setCurrentPage('minecraft'); }} className="hover:text-emerald-400">Minecraft Bedorck</button></li>
+                <li><button onClick={() => setCurrentPage('games')} className="hover:text-emerald-400">Hytale</button></li>
+                <li><button onClick={() => setCurrentPage('games')} className="hover:text-emerald-400">Fivem Hosting</button></li>
+                <li><button onClick={() => setCurrentPage('games')} className="hover:text-emerald-400">GTA: San Andreas Multiplayer</button></li>
+              </ul>
+            </div>
+
+            {/* Column 3: Support matching Image 1 */}
+            <div className="space-y-2.5">
+              <span className="font-bold text-white block">Support</span>
+              <ul className="space-y-2">
+                <li><button onClick={() => setCurrentPage('tickets')} className="hover:text-emerald-400">Support Tickets</button></li>
+                <li><button onClick={() => setCurrentPage('tickets')} className="hover:text-emerald-400">Create Ticket</button></li>
+              </ul>
+            </div>
+
+            {/* Column 4: Company matching Image 1 */}
+            <div className="space-y-2.5">
+              <span className="font-bold text-white block">Company</span>
+              <ul className="space-y-2">
+                <li><button onClick={() => setCurrentPage('home')} className="hover:text-emerald-400">Home</button></li>
+                <li><a href="#" className="hover:text-emerald-400">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-emerald-400">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-emerald-400">Fair Usage Policy</a></li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* Bottom Copyright bar matching Image 1 */}
+          <div className="pt-6 border-t border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-500 text-[11px]">
+            <div>© 2026 Apsara Hosting. All rights reserved.</div>
+            <div className="flex gap-4">
+              <a href="#" className="hover:underline">Terms</a>
+              <span>•</span>
+              <a href="#" className="hover:underline">Privacy</a>
+              <span>•</span>
+              <a href="#" className="hover:underline">Fair Use</a>
+            </div>
+          </div>
+
+        </div>
+      </footer>
 
     </div>
   );

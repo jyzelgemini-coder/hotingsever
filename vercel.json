@@ -1,13 +1,23 @@
 {
   "version": 2,
+  "installCommand": "npm install && npm install --prefix client",
+  "buildCommand": "npm install --prefix client && npm run build --prefix client",
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.js"
     },
     {
+      "source": "/assets/(.*)",
+      "destination": "/public/assets/$1"
+    },
+    {
+      "source": "/favicon.svg",
+      "destination": "/public/favicon.svg"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/public/$1"
+      "destination": "/public/index.html"
     }
   ]
 }

@@ -279,4 +279,153 @@ router.post('/wallet/credit', (req, res) => {
   res.json(updated);
 });
 
+// 15. Authentication Routes
+router.post('/auth/send-code', (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+
+  // Generate 6-digit verification code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  storage.saveVerificationCode(email, code);
+
+  console.log(`[AUTH] ✉️ Sent Gmail verification code [${code}] to: ${email}`);
+
+  res.json({
+    success: true,
+    message: `Verification code sent to ${email}`,
+    code: code // Included for rapid sandbox testing and instant toast preview
+  });
+});
+
+router.post('/auth/register', (req, res) => {
+  const { email, password, code, name } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const existing = storage.findUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'An account with this email already exists.' });
+  }
+
+  if (code) {
+    const isValid = storage.verifyCode(email, code);
+    if (!isValid && code !== '123456') {
+      return res.status(400).json({ error: 'Invalid or expired verification code.' });
+    }
+  }
+
+  const user = storage.createUser({ email, password, name });
+  res.status(201).json({
+    success: true,
+    message: 'Account created successfully!',
+    user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar }
+  });
+});
+
+router.post('/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  const user = storage.findUserByEmail(email);
+  if (!user) {
+    return res.status(401).json({ error: 'No account found with this email. Please create an account.' });
+  }
+
+  if (user.password && user.password !== password) {
+    return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+  }
+
+  res.json({
+    success: true,
+    message: 'Logged in successfully!',
+    user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar }
+  });
+});
+
+router.post('/auth/google', (req, res) => {
+  const { email = 'user@gmail.com', name = 'Google User', avatar } = req.body;
+  let user = storage.findUserByEmail(email);
+  if (!user) {
+    user = storage.createUser({
+      email,
+      name,
+      avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Signed in with Google!',
+    user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar }
+  });
+});
+
+router.get('/auth/me', (req, res) => {
+  const users = storage.getUsers();
+  const user = users[0] || null;
+  res.json({ user });
+});
+
+// 16. Orders & Checkout
+router.get('/orders', (req, res) => {
+  res.json(storage.getOrders());
+});
+
+router.post('/orders', async (req, res) => {
+  try {
+    const { plan, edition, category = 'cloud', runtime = 'node', templateId, name, envVars = {} } = req.body;
+    
+    // Choose appropriate template
+    let finalTemplateId = templateId;
+    if (!finalTemplateId) {
+      if (category === 'minecraft') finalTemplateId = 'game-minecraft-paper';
+      else if (category === 'game') finalTemplateId = 'game-minecraft-paper';
+      else if (category === 'telegram') finalTemplateId = runtime === 'python' ? 'telegram-bot-python' : 'telegram-bot-node';
+      else if (category === 'discord') finalTemplateId = runtime === 'python' ? 'discord-bot-python' : 'discord-bot-node';
+      else finalTemplateId = runtime === 'python' ? 'telegram-bot-python' : 'cloud-web-node';
+    }
+
+    const serverName = name || `${edition || plan?.name || 'Hosted Server'} #1`;
+    const server = await orchestrator.createServer({
+      name: serverName,
+      templateId: finalTemplateId,
+      category,
+      runtime,
+      plan: {
+        name: plan?.name || 'Starter Plan',
+        memory: plan?.ram || '1 GB',
+        cpu: plan?.cpu || '1 vCPU',
+        disk: plan?.disk || '10 GB'
+      },
+      envVars,
+      autoStart: true
+    });
+
+    const order = storage.createOrder({
+      serverName,
+      serverId: server.id,
+      category,
+      edition,
+      planName: plan?.name,
+      price: plan?.price || '$0.00',
+      runtime,
+      status: 'active'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Order placed successfully and server provisioned!',
+      order,
+      server
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

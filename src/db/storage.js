@@ -16,12 +16,24 @@ try {
 
 // Initial DB template
 const defaultData = {
+  users: [
+    {
+      id: 'usr_demo_1',
+      email: 'customer@gmail.com',
+      password: 'password123',
+      name: 'Apsara Customer',
+      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Apsara',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  verificationCodes: {},
+  orders: [],
   servers: [],
   wallet: {
-    balance: 10.00,
+    balance: 50.00,
     currency: 'USD',
     transactions: [
-      { id: 'tx-welcome', amount: 10.00, type: 'credit', desc: 'Free Welcome Bonus', date: new Date().toISOString() }
+      { id: 'tx-welcome', amount: 50.00, type: 'credit', desc: 'Free Welcome Hosting Credit', date: new Date().toISOString() }
     ]
   },
   settings: {
@@ -45,9 +57,10 @@ function readDb() {
     }
     const data = fs.readFileSync(DB_PATH, 'utf-8');
     memoryCache = JSON.parse(data);
-    if (!memoryCache.wallet) {
-      memoryCache.wallet = { ...defaultData.wallet };
-    }
+    if (!memoryCache.wallet) memoryCache.wallet = { ...defaultData.wallet };
+    if (!memoryCache.users) memoryCache.users = [...defaultData.users];
+    if (!memoryCache.verificationCodes) memoryCache.verificationCodes = {};
+    if (!memoryCache.orders) memoryCache.orders = [];
     return memoryCache;
   } catch (err) {
     return memoryCache;
@@ -123,6 +136,69 @@ const storage = {
     db.settings = { ...db.settings, ...newSettings };
     writeDb(db);
     return db.settings;
+  },
+
+  // User Accounts
+  getUsers() {
+    return readDb().users || [];
+  },
+
+  findUserByEmail(email) {
+    if (!email) return null;
+    const users = this.getUsers();
+    return users.find(u => u.email.toLowerCase() === email.trim().toLowerCase()) || null;
+  },
+
+  createUser({ email, password, name, avatar }) {
+    const db = readDb();
+    const newUser = {
+      id: 'usr_' + Date.now(),
+      email: email.trim().toLowerCase(),
+      password: password || '',
+      name: name || email.split('@')[0],
+      avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name || email)}`,
+      createdAt: new Date().toISOString()
+    };
+    db.users.push(newUser);
+    writeDb(db);
+    return newUser;
+  },
+
+  // Verification Codes (for email registration)
+  saveVerificationCode(email, code) {
+    const db = readDb();
+    if (!db.verificationCodes) db.verificationCodes = {};
+    db.verificationCodes[email.toLowerCase()] = {
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+    };
+    writeDb(db);
+  },
+
+  verifyCode(email, code) {
+    const db = readDb();
+    const record = db.verificationCodes ? db.verificationCodes[email.toLowerCase()] : null;
+    if (!record) return false;
+    if (Date.now() > record.expiresAt) return false;
+    return record.code.toString() === code.toString();
+  },
+
+  // Orders
+  getOrders() {
+    return readDb().orders || [];
+  },
+
+  createOrder(order) {
+    const db = readDb();
+    const newOrder = {
+      id: 'ord_' + Date.now(),
+      ...order,
+      createdAt: new Date().toISOString()
+    };
+    if (!db.orders) db.orders = [];
+    db.orders.unshift(newOrder);
+    writeDb(db);
+    return newOrder;
   }
 };
 
