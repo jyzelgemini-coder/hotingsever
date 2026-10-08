@@ -13,6 +13,10 @@ class TelegramManager {
   }
 
   init() {
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      console.log('[TELEGRAM MANAGER] Serverless environment: long polling standby, webhook mode ready.');
+      return;
+    }
     const settings = storage.getSettings();
     const token = process.env.TELEGRAM_ADMIN_BOT_TOKEN || settings.telegramBotToken;
     if (token && token.trim()) {

@@ -281,7 +281,7 @@ router.post('/wallet/credit', (req, res) => {
 
 // 15. Authentication Routes
 router.post('/auth/send-code', (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
@@ -300,7 +300,7 @@ router.post('/auth/send-code', (req, res) => {
 });
 
 router.post('/auth/register', (req, res) => {
-  const { email, password, code, name } = req.body;
+  const { email, password, code, name } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
@@ -326,7 +326,7 @@ router.post('/auth/register', (req, res) => {
 });
 
 router.post('/auth/login', (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
@@ -348,7 +348,7 @@ router.post('/auth/login', (req, res) => {
 });
 
 router.post('/auth/google', (req, res) => {
-  const { email = 'user@gmail.com', name = 'Google User', avatar } = req.body;
+  const { email = 'user@gmail.com', name = 'Google User', avatar } = req.body || {};
   let user = storage.findUserByEmail(email);
   if (!user) {
     user = storage.createUser({
@@ -378,7 +378,7 @@ router.get('/orders', (req, res) => {
 
 router.post('/orders', async (req, res) => {
   try {
-    const { plan, edition, category = 'cloud', runtime = 'node', templateId, name, envVars = {} } = req.body;
+    const { plan, edition, category = 'cloud', runtime = 'node', templateId, name, envVars = {} } = req.body || {};
     
     // Choose appropriate template
     let finalTemplateId = templateId;

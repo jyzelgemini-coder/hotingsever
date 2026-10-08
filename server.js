@@ -17,18 +17,38 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Safe req.body parser for Vercel serverless functions
+app.use((req, res, next) => {
+  if (typeof req.body === 'string') {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (e) {}
+  }
+  if (!req.body) req.body = {};
+  next();
+});
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount API routes
 app.use('/api', apiRoutes);
 
+const fs = require('fs');
+
 // Fallback route to serve index.html
 app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
     return next();
   }
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+  const indexPath = path.join(process.cwd(), 'public/index.html');
+  const localPath = path.join(__dirname, 'public/index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  } else if (fs.existsSync(localPath)) {
+    return res.sendFile(localPath);
+  }
+  res.json({ status: 'online', service: 'Apsara Hosting Cloud Platform' });
 });
 
 // WebSocket Server

@@ -11,6 +11,9 @@ class ProcessEngine {
   }
 
   startMonitoring() {
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      return; // Disable background polling interval in serverless lambdas
+    }
     if (this.statsInterval) clearInterval(this.statsInterval);
     this.statsInterval = setInterval(async () => {
       for (const [id, inst] of this.instances.entries()) {
