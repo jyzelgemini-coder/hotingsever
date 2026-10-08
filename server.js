@@ -37,19 +37,55 @@ app.use(apiRoutes);
 
 const fs = require('fs');
 
-// Fallback route to serve index.html
+// Embedded fallback HTML matching Vite build
+const HTML_FALLBACK = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apsara Hosting - Cloud & Game Hosting Platform</title>
+    <script type="module" crossorigin src="/assets/index-B1ZuWufX.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Zr4a0Dpm.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+
+// Safe fallback route to serve index.html
 app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
     return next();
   }
-  const indexPath = path.join(process.cwd(), 'public/index.html');
-  const localPath = path.join(__dirname, 'public/index.html');
-  if (fs.existsSync(indexPath)) {
-    return res.sendFile(indexPath);
-  } else if (fs.existsSync(localPath)) {
-    return res.sendFile(localPath);
+  const possiblePaths = [
+    path.join(__dirname, 'public/index.html'),
+    path.join(process.cwd(), 'public/index.html'),
+    path.join(__dirname, 'index.html'),
+    path.join(process.cwd(), 'index.html')
+  ];
+
+  for (const p of possiblePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        const html = fs.readFileSync(p, 'utf-8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.status(200).send(html);
+      }
+    } catch (e) {}
   }
-  res.json({ status: 'online', service: 'Apsara Hosting Cloud Platform' });
+
+  // Safe fallback if files are deployed to CDN
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.status(200).send(HTML_FALLBACK);
+});
+
+// Global error handler to prevent serverless function crashes
+app.use((err, req, res, next) => {
+  console.error('[SERVER ERROR]', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
 });
 
 // WebSocket Server

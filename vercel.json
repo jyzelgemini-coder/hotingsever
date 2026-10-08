@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install --include=dev && npm install --include=dev --prefix client",
-  "buildCommand": "npm run build --prefix client",
+  "buildCommand": "npm run build",
   "rewrites": [
     {
       "source": "/api/(.*)",
