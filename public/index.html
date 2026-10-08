@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Bot & Server Hosting Platform</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-[#070a11] text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-black">
+
+  <!-- Header / Navigation -->
+  <header class="border-b border-slate-800/80 bg-[#0a0e18]/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-8">
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-500 flex items-center justify-center font-black text-slate-950 shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition">
+            ⚡
+          </div>
+          <div>
+            <span class="font-extrabold tracking-wider text-sm bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent">HOSTING CLOUD</span>
+            <span class="block text-[10px] text-emerald-400 font-mono tracking-widest uppercase">Engine v2.0</span>
+          </div>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+          <a href="#" id="nav-hosting" class="px-3 py-2 rounded-lg text-emerald-400 hover:text-white transition flex items-center gap-1.5">
+            <span>✨</span> Hosting Types
+          </a>
+          <a href="#" id="nav-servers" class="px-3 py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+            <span>📋</span> My Servers
+            <span id="stat-active" class="ml-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">0 Active</span>
+          </a>
+          <a href="#" id="nav-telegram" class="px-3 py-2 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+            <span>🤖</span> Telegram Bot Controller
+          </a>
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Host Health Widget -->
+        <div class="hidden lg:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="engine-mode-badge" class="text-slate-300">Isolated Sandbox</span>
+          </div>
+          <span class="text-slate-700">|</span>
+          <div class="text-slate-400">
+            RAM: <span id="stat-ram" class="text-slate-200">0 / 0 MB</span>
+          </div>
+          <span class="text-slate-700">|</span>
+          <div class="text-slate-400">
+            CPU: <span id="stat-cpu" class="text-slate-200">4 Cores</span>
+          </div>
+        </div>
+
+        <button onclick="openDeployModal('all')" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-semibold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+          <span>+</span> Deploy Bot / Server
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: HOSTING TYPES (MATCHES SCREENSHOT) -->
+    <!-- ========================================== -->
+    <section id="view-hosting" class="space-y-8">
+      
+      <!-- Top banner matching screenshot exactly -->
+      <div class="rounded-2xl p-6 sm:p-8 bg-[#0c101a] border border-slate-800/80 shadow-2xl relative overflow-hidden">
+        <div class="relative z-10 space-y-2">
+          <div class="inline-block px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wider bg-slate-800 text-slate-300 uppercase">
+            GET STARTED
+          </div>
+          <p class="text-emerald-400 font-semibold text-sm sm:text-base">
+            Pick Minecraft, game, or cloud hosting to continue.
+          </p>
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+            Choose your hosting type
+          </h1>
+          <p class="text-slate-400 text-sm max-w-2xl pt-1">
+            Choose Minecraft, game, or cloud hosting to start your order. Deploy Telegram bots, Discord bots, web APIs or game servers in seconds.
+          </p>
+        </div>
+      </div>
+
+      <!-- Specialized Bot Hosting Highlight Row -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+            <span class="text-cyan-400">🤖</span> Dedicated Bot & App Hosting
+          </h2>
+          <span class="text-xs text-slate-400">24/7 Background Runner • Auto-Restart</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Telegram Bot Card -->
+          <div class="host-card card-selected-cyan rounded-2xl p-6 flex flex-col justify-between group">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl text-cyan-400 shadow-lg shadow-cyan-500/10">
+                  ✈️
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold badge-cyan">
+                  Python &amp; Node.js
+                </span>
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Telegram Bot Hosting</h3>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                Host your Telegram bots 24/7 with long-polling or webhooks. Ready templates for Python (aiogram, telebot) and Node.js (Telegraf, grammY).
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-mono">Starter from Free / 512MB RAM</span>
+              <button onclick="openDeployModal('telegram')" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
+                Get started <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Discord Bot Card -->
+          <div class="host-card card-selected-purple rounded-2xl p-6 flex flex-col justify-between group">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-3xl text-purple-400 shadow-lg shadow-purple-500/10">
+                  👾
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold badge-purple">
+                  Discord.js &amp; Python
+                </span>
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Discord Bot Hosting</h3>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                Always-on Discord Gateway connection with zero downtime, slash commands, voice handler, and automatic reconnect on rate limits.
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-mono">Gateway WebSocket • 512MB - 4GB</span>
+              <button onclick="openDeployModal('discord')" class="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-md shadow-purple-500/20">
+                Get started <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Standard 3 Cards matching the screenshot -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+            <span>📦</span> Cloud &amp; Game Servers
+          </h2>
+          <span class="text-xs text-slate-400">Choose Minecraft, game, or cloud hosting to start your order.</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          <!-- Card 1: Minecraft Hosting (Green Border Glow) -->
+          <div class="host-card card-selected-green rounded-2xl p-6 flex flex-col justify-between group">
+            <div>
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-3xl text-emerald-400 mb-5 shadow-lg shadow-emerald-500/10">
+                🟩
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Minecraft Hosting</h3>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                Java or Bedrock — pick a plan, set your options, and order in minutes.
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80">
+              <button onclick="openDeployModal('game', 'game-minecraft-paper')" class="text-sm font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 group-hover:gap-2 transition-all">
+                Get started <span class="transition-transform">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 2: Game Hosting (Collage Artwork Style) -->
+          <div class="host-card card-selected-blue rounded-2xl p-6 flex flex-col justify-between group">
+            <div>
+              <div class="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/40 flex items-center justify-center text-3xl text-blue-400 mb-5 shadow-lg shadow-blue-500/10">
+                🎮
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Game Hosting</h3>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                FiveM, Hytale, Ark, GTA SA-MP, and more game servers.
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80">
+              <button onclick="openDeployModal('game')" class="text-sm font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1.5 group-hover:gap-2 transition-all">
+                Get started <span class="transition-transform">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 3: Cloud Hosting (Cyan Globe) -->
+          <div class="host-card card-selected-cyan rounded-2xl p-6 flex flex-col justify-between group">
+            <div>
+              <div class="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-3xl text-cyan-400 mb-5 shadow-lg shadow-cyan-500/10">
+                🌐
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Cloud Hosting</h3>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                Apps, APIs, Discord bots, and any custom backend stack.
+              </p>
+            </div>
+            <div class="pt-4 border-t border-slate-800/80">
+              <button onclick="openDeployModal('cloud', 'cloud-web-node')" class="text-sm font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 group-hover:gap-2 transition-all">
+                Get started <span class="transition-transform">→</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: MY SERVERS (LIST & OVERVIEW)       -->
+    <!-- ========================================== -->
+    <section id="view-servers" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <h1 class="text-2xl font-bold text-white">Active Hosted Instances</h1>
+          <p class="text-slate-400 text-sm">Monitor runtime resources, restart crashed services, or open live consoles.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="loadServers()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5">
+            <span>🔄</span> Refresh
+          </button>
+          <button onclick="openDeployModal('all')" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold transition flex items-center gap-1.5">
+            <span>+</span> New Server
+          </button>
+        </div>
+      </div>
+
+      <div id="servers-container">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: SERVER DETAIL / LIVE CONSOLE       -->
+    <!-- ========================================== -->
+    <section id="view-detail" class="hidden space-y-6">
+      <!-- Breadcrumb / Back button -->
+      <div class="flex items-center justify-between">
+        <button onclick="showView('view-servers'); setActiveNav(document.getElementById('nav-servers'));" class="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5">
+          ← Back to All Servers
+        </button>
+        <span class="text-xs font-mono text-slate-500" id="detail-id"></span>
+      </div>
+
+      <!-- Server Header Card -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+        <div class="space-y-1">
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-white" id="detail-name">Server Instance</h1>
+            <span id="detail-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5">
+              STOPPED
+            </span>
+          </div>
+          <p class="text-xs font-mono text-slate-400" id="detail-runtime">Node.js • 512MB</p>
+        </div>
+
+        <!-- Mini Stats -->
+        <div class="flex items-center gap-4 bg-slate-950/60 px-5 py-3 rounded-xl border border-slate-800/80 font-mono text-xs">
+          <div>
+            <span class="text-slate-500 block text-[10px]">CPU USAGE</span>
+            <span id="detail-stat-cpu" class="text-slate-200 font-bold text-sm">0%</span>
+          </div>
+          <span class="text-slate-800">|</span>
+          <div>
+            <span class="text-slate-500 block text-[10px]">MEMORY</span>
+            <span id="detail-stat-ram" class="text-slate-200 font-bold text-sm">0 MB</span>
+          </div>
+          <span class="text-slate-800">|</span>
+          <div>
+            <span class="text-slate-500 block text-[10px]">UPTIME</span>
+            <span id="detail-stat-uptime" class="text-slate-200 font-bold text-sm">0s</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center gap-2">
+          <button id="detail-btn-start" onclick="executeAction(currentServerId, 'start')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20">
+            ▶ Start
+          </button>
+          <button id="detail-btn-stop" onclick="executeAction(currentServerId, 'stop')" class="hidden px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-rose-500/20">
+            ⏹ Stop
+          </button>
+          <button onclick="executeAction(currentServerId, 'restart')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center gap-1.5">
+            🔄 Restart
+          </button>
+          <button onclick="deleteServer(currentServerId)" class="p-2 bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-xl transition" title="Delete Instance">
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center gap-2 border-b border-slate-800">
+        <button id="btn-tab-console" onclick="switchDetailTab('console')" class="px-4 py-2.5 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-400 bg-slate-800/40 rounded-t-lg transition flex items-center gap-1.5">
+          💻 Live Console Terminal
+        </button>
+        <button id="btn-tab-env" onclick="switchDetailTab('env')" class="px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white rounded-t-lg transition flex items-center gap-1.5">
+          🔑 Environment Variables
+        </button>
+        <button id="btn-tab-files" onclick="switchDetailTab('files')" class="px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white rounded-t-lg transition flex items-center gap-1.5">
+          📂 File Manager &amp; Editor
+        </button>
+        <button id="btn-tab-docker" onclick="switchDetailTab('docker')" class="px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white rounded-t-lg transition flex items-center gap-1.5">
+          🐳 Cloud Docker / VPS Export
+        </button>
+      </div>
+
+      <!-- TAB 1: LIVE CONSOLE TERMINAL -->
+      <div id="content-tab-console" class="space-y-3">
+        <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5 text-emerald-400 font-medium">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> WebSocket Stream Connected
+            </span>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
+              <input type="checkbox" id="terminal-autoscroll" checked class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
+              <span>Auto-scroll</span>
+            </label>
+          </div>
+          <button onclick="clearTerminal()" class="hover:text-slate-200 transition">
+            Clear Logs
+          </button>
+        </div>
+
+        <div class="terminal-window rounded-2xl border border-slate-800 overflow-hidden shadow-2xl">
+          <!-- Terminal logs container -->
+          <div id="terminal-logs" class="terminal-scroll h-96 p-4 overflow-y-auto space-y-1 font-mono text-xs">
+            <!-- Stream logs here -->
+          </div>
+
+          <!-- Stdin Command Input Bar -->
+          <form onsubmit="event.preventDefault(); sendTerminalCommand();" class="flex items-center border-t border-slate-800/80 bg-[#090d16] p-2">
+            <span class="px-3 text-emerald-400 font-mono text-xs font-bold">&gt;</span>
+            <input type="text" id="terminal-input" placeholder="Send command or stdin text to process..." class="flex-1 bg-transparent border-none text-xs font-mono text-slate-200 outline-none focus:ring-0 placeholder:text-slate-600" />
+            <button type="submit" class="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-lg transition">
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB 2: ENVIRONMENT VARIABLES -->
+      <div id="content-tab-env" class="hidden space-y-4">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white">Instance Environment Variables</h3>
+              <p class="text-xs text-slate-400">Configure bot tokens, API keys, database URLs, and port numbers.</p>
+            </div>
+            <button onclick="addEnvRow()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition">
+              + Add Variable
+            </button>
+          </div>
+
+          <div id="env-items-list" class="space-y-3">
+            <!-- Rows injected by JavaScript -->
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 flex justify-end">
+            <button onclick="saveEnvironmentVars()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-500/20">
+              Save Variables &amp; Restart
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: FILE MANAGER -->
+      <div id="content-tab-files" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+          <!-- Files List -->
+          <div class="md:col-span-1 border-r border-slate-800 pr-4 space-y-2">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+              <span class="text-xs font-bold text-slate-300">Project Files</span>
+              <button onclick="loadInstanceFiles(currentServerId)" class="text-xs text-emerald-400 hover:underline">Refresh</button>
+            </div>
+            <div id="files-tree" class="space-y-1 max-h-96 overflow-y-auto">
+              <!-- Files injected -->
+            </div>
+          </div>
+
+          <!-- Code Editor Area -->
+          <div class="md:col-span-2 space-y-3">
+            <div class="flex items-center justify-between">
+              <span id="current-file-label" class="text-xs font-mono text-emerald-400">Select a file</span>
+              <button onclick="saveCurrentFile()" class="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-lg transition">
+                Save File
+              </button>
+            </div>
+            <textarea id="file-editor-content" rows="18" class="w-full bg-[#070a11] border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 outline-none focus:border-emerald-500 resize-none" placeholder="File contents will display here..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: DOCKER / VPS EXPORT -->
+      <div id="content-tab-docker" class="hidden space-y-6">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>🐳</span> Production Docker Export
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              You can run this container directly on any Cloud VPS (Ubuntu, Debian, AWS, DigitalOcean, Hetzner) using standard Docker and Docker Compose.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dockerfile Preview -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold text-slate-300">Dockerfile</span>
+                <button onclick="copyToClipboard('dockerfile-preview')" class="text-[11px] text-cyan-400 hover:underline">Copy</button>
+              </div>
+              <pre id="dockerfile-preview" class="p-3 bg-[#07090e] border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto h-64"></pre>
+            </div>
+
+            <!-- Docker Compose Preview -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold text-slate-300">docker-compose.yml</span>
+                <button onclick="copyToClipboard('compose-preview')" class="text-[11px] text-cyan-400 hover:underline">Copy</button>
+              </div>
+              <pre id="compose-preview" class="p-3 bg-[#07090e] border border-slate-800 rounded-xl text-xs font-mono text-slate-300 overflow-x-auto h-64"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 4: TELEGRAM BOT REMOTE CONTROLLER    -->
+    <!-- ========================================== -->
+    <section id="view-telegram" class="hidden space-y-6">
+      <div class="max-w-3xl mx-auto space-y-6">
+        <div class="rounded-2xl p-6 sm:p-8 bg-[#0c101a] border border-slate-800 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl text-cyan-400">
+                ✈️
+              </div>
+              <div>
+                <h1 class="text-xl font-bold text-white">Telegram Remote Bot Controller</h1>
+                <p class="text-xs text-slate-400">Control and monitor all your hosting servers directly from Telegram on your phone</p>
+              </div>
+            </div>
+            <div id="tg-status-badge">
+              <!-- Online badge injected -->
+            </div>
+          </div>
+
+          <div class="space-y-4 pt-4 border-t border-slate-800/80">
+            <div class="space-y-1">
+              <label class="block text-xs font-semibold text-slate-300">Telegram Admin Bot Token</label>
+              <div class="flex gap-2">
+                <input type="password" id="tg-bot-token-input" placeholder="e.g. 7123456789:ABCdef-gh123_456" class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-200 outline-none focus:border-cyan-500" />
+                <button onclick="saveTelegramConfig()" class="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition shadow-md shadow-cyan-500/20">
+                  Save &amp; Connect
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400">
+                Create a bot with <a href="https://t.me/BotFather" target="_blank" class="text-cyan-400 underline">@BotFather</a> and paste the API token here.
+              </p>
+            </div>
+
+            <!-- Commands Overview Card -->
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 font-mono text-xs space-y-2">
+              <span class="text-slate-400 font-bold block mb-1">Interactive Commands Supported:</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-300">
+                <div><code class="text-cyan-400">/servers</code> - List all instances</div>
+                <div><code class="text-cyan-400">/sys</code> - Host CPU &amp; RAM health</div>
+                <div><code class="text-cyan-400">/start_srv &lt;id&gt;</code> - Start server</div>
+                <div><code class="text-cyan-400">/stop_srv &lt;id&gt;</code> - Stop server</div>
+                <div><code class="text-cyan-400">/restart_srv &lt;id&gt;</code> - Restart server</div>
+                <div><code class="text-cyan-400">/logs &lt;id&gt;</code> - Get recent 15 lines</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: DEPLOY INSTANCE WIZARD              -->
+  <!-- ========================================== -->
+  <div id="deploy-modal" class="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0c111d] border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <span>⚡</span> Configure &amp; Deploy Server
+        </h3>
+        <button onclick="closeDeployModal()" class="text-slate-400 hover:text-white p-1">✕</button>
+      </div>
+
+      <form onsubmit="submitDeployForm(event)" class="p-6 space-y-4">
+        <!-- Template Selection -->
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300">Choose Starter Template</label>
+          <select id="modal-template" onchange="onTemplateChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 outline-none focus:border-emerald-500">
+            <!-- Injected by JS -->
+          </select>
+        </div>
+
+        <!-- Server Name -->
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300">Server Instance Name</label>
+          <input type="text" id="modal-server-name" placeholder="My Telegram Bot #1" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500 font-sans" />
+        </div>
+
+        <!-- Resource Plan -->
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300">Resource Allocation</label>
+          <select id="modal-plan" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-200 outline-none focus:border-emerald-500">
+            <option value="512">Starter: 512 MB RAM • 0.5 vCPU (Free / Standard)</option>
+            <option value="2048">Pro: 2048 MB RAM • 1.0 vCPU</option>
+            <option value="4096">Enterprise: 4096 MB RAM • 2.0 vCPU</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Environment Fields (Token, Port, etc.) -->
+        <div id="modal-dynamic-env" class="space-y-3 pt-2 border-t border-slate-800/80">
+          <!-- Injected dynamically based on template -->
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeDeployModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
+            Cancel
+          </button>
+          <button type="submit" id="modal-deploy-btn" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5">
+            ⚡ Launch Server Now
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "servers": [
+    {
+      "id": "a2f7f261-7cd5-4ac6-bc19-e353c6d19b02",
+      "name": "Demo Telegram Bot",
+      "templateId": "telegram-bot-node",
+      "category": "telegram",
+      "runtime": "node",
+      "entryFile": "bot.js",
+      "status": "stopped",
+      "plan": {
+        "memory": "512MB",
+        "cpu": "0.5 vCPU"
+      },
+      "envVars": {
+        "BOT_TOKEN": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+        "NODE_ENV": "production"
+      },
+      "restartPolicy": "on-failure",
+      "orchestratorMode": "process",
+      "createdAt": "2026-10-08T05:10:38.837Z",
+      "updatedAt": "2026-10-08T05:10:38.837Z"
+    },
+    {
+      "id": "92387832-3c63-4926-8690-e0d36523bd27",
+      "name": "Demo Discord Bot",
+      "templateId": "discord-bot-node",
+      "category": "discord",
+      "runtime": "node",
+      "entryFile": "bot.js",
+      "status": "stopped",
+      "plan": {
+        "memory": "512MB",
+        "cpu": "0.5 vCPU"
+      },
+      "envVars": {
+        "DISCORD_TOKEN": "YOUR_DISCORD_BOT_TOKEN_HERE",
+        "NODE_ENV": "production"
+      },
+      "restartPolicy": "on-failure",
+      "orchestratorMode": "process",
+      "createdAt": "2026-10-08T05:11:11.575Z",
+      "updatedAt": "2026-10-08T05:11:11.575Z"
+    }
+  ],
+  "settings": {
+    "telegramBotToken": "",
+    "telegramChatId": "",
+    "dockerEnabled": false,
+    "defaultPortRangeStart": 3000,
+    "defaultPortRangeEnd": 3999
+  }
+}

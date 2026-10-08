@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  bot-cloud-host:
+    build: .
+    container_name: bot-cloud-engine
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      # Optional: Telegram bot token to control your server via Telegram
+      - TELEGRAM_ADMIN_BOT_TOKEN=
+    volumes:
+      - ./data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
