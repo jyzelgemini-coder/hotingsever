@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node server.js",
+    "build": "npm run build --prefix client",
+    "client:dev": "npm run dev --prefix client",
+    "test": "node C:\\Users\\SRC\\.gemini\\antigravity\\brain\\5204db2b-8630-41a6-bb20-e04ce75551c8\\scratch\\test_api.js"
   },
   "keywords": [],
   "author": "",

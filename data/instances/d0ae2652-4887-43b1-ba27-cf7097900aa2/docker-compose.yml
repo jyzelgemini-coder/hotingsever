@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  telegram-bot--node-js---1:
+    build: .
+    container_name: telegram-bot--node-js---1-d0ae2652
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=demo
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          memory: 512MB
+          cpus: '0.5 vCPU'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

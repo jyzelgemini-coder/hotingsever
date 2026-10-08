@@ -17,6 +17,13 @@ try {
 // Initial DB template
 const defaultData = {
   servers: [],
+  wallet: {
+    balance: 10.00,
+    currency: 'USD',
+    transactions: [
+      { id: 'tx-welcome', amount: 10.00, type: 'credit', desc: 'Free Welcome Bonus', date: new Date().toISOString() }
+    ]
+  },
   settings: {
     telegramBotToken: '',
     telegramChatId: '',
@@ -38,6 +45,9 @@ function readDb() {
     }
     const data = fs.readFileSync(DB_PATH, 'utf-8');
     memoryCache = JSON.parse(data);
+    if (!memoryCache.wallet) {
+      memoryCache.wallet = { ...defaultData.wallet };
+    }
     return memoryCache;
   } catch (err) {
     return memoryCache;
@@ -81,6 +91,27 @@ const storage = {
     const db = readDb();
     db.servers = db.servers.filter(s => s.id !== id);
     writeDb(db);
+  },
+
+  getWallet() {
+    const db = readDb();
+    return db.wallet || defaultData.wallet;
+  },
+
+  updateWallet(amount, desc = 'Balance adjustment') {
+    const db = readDb();
+    if (!db.wallet) db.wallet = { ...defaultData.wallet };
+    db.wallet.balance = Math.max(0, Math.round((db.wallet.balance + amount) * 100) / 100);
+    const tx = {
+      id: 'tx-' + Date.now(),
+      amount,
+      type: amount >= 0 ? 'credit' : 'debit',
+      desc,
+      date: new Date().toISOString()
+    };
+    db.wallet.transactions = [tx, ...(db.wallet.transactions || [])].slice(0, 30);
+    writeDb(db);
+    return db.wallet;
   },
 
   getSettings() {

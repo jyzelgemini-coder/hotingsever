@@ -240,4 +240,43 @@ router.post('/telegram/config', (req, res) => {
   res.json({ success: true, message: 'Telegram admin bot connected and polling!' });
 });
 
+// 12. Telegram Bot Simulator (for browser playground testing)
+router.post('/telegram/simulate', async (req, res) => {
+  try {
+    const { text, callback_data, chatId = 'browser_sim_user', userName = 'Explorer' } = req.body;
+    let response;
+    if (callback_data) {
+      response = await telegramManager.processCallback({ chatId, data: callback_data, userName });
+    } else {
+      response = await telegramManager.processInput({ chatId, text: text || '/start', userName });
+    }
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 13. Telegram Webhook Endpoint
+router.post('/telegram/webhook', async (req, res) => {
+  try {
+    if (req.body) {
+      await telegramManager.handleUpdate(req.body);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 14. Wallet & Billing
+router.get('/wallet', (req, res) => {
+  res.json(storage.getWallet());
+});
+
+router.post('/wallet/credit', (req, res) => {
+  const { amount = 5.00, desc = 'Manual credit top-up' } = req.body;
+  const updated = storage.updateWallet(Number(amount), desc);
+  res.json(updated);
+});
+
 module.exports = router;

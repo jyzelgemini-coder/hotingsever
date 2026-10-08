@@ -41,6 +41,28 @@
       "orchestratorMode": "process",
       "createdAt": "2026-10-08T05:11:11.575Z",
       "updatedAt": "2026-10-08T05:11:11.575Z"
+    },
+    {
+      "id": "d0ae2652-4887-43b1-ba27-cf7097900aa2",
+      "name": "Telegram Bot (Node.js) #1",
+      "templateId": "telegram-bot-node",
+      "category": "bot",
+      "runtime": "node",
+      "entryFile": "bot.js",
+      "status": "running",
+      "plan": {
+        "name": "Starter",
+        "memory": "512MB",
+        "cpu": "0.5 vCPU"
+      },
+      "envVars": {
+        "BOT_TOKEN": "demo",
+        "NODE_ENV": "production"
+      },
+      "restartPolicy": "on-failure",
+      "orchestratorMode": "process",
+      "createdAt": "2026-10-08T06:26:44.132Z",
+      "updatedAt": "2026-10-08T06:26:44.159Z"
     }
   ],
   "settings": {
@@ -49,5 +71,18 @@
     "dockerEnabled": false,
     "defaultPortRangeStart": 3000,
     "defaultPortRangeEnd": 3999
+  },
+  "wallet": {
+    "balance": 10,
+    "currency": "USD",
+    "transactions": [
+      {
+        "id": "tx-welcome",
+        "amount": 10,
+        "type": "credit",
+        "desc": "Free Welcome Bonus",
+        "date": "2026-10-08T06:26:18.457Z"
+      }
+    ]
   }
 }
