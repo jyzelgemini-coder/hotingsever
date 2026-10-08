@@ -1,15 +1,37 @@
 {
-  "version": 2,
-  "installCommand": "npm install --include=dev && npm install --include=dev --prefix client",
-  "buildCommand": "npm run build --prefix client",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "vite"
+    },
+    "client": {
+      "root": "client",
+      "framework": "vite"
+    },
+    "3734720-c12b-498f-a25f-e09ad41148e8": {
+      "root": "data/instances/63734720-c12b-498f-a25f-e09ad41148e8",
+      "runtime": "python"
+    },
+    "2387832-3c63-4926-8690-e0d36523bd27": {
+      "root": "data/instances/92387832-3c63-4926-8690-e0d36523bd27",
+      "runtime": "container"
+    },
+    "a2f7f261-7cd5-4ac6-bc19-e353c6d19b02": {
+      "root": "data/instances/a2f7f261-7cd5-4ac6-bc19-e353c6d19b02",
+      "runtime": "container"
+    },
+    "d0ae2652-4887-43b1-ba27-cf7097900aa2": {
+      "root": "data/instances/d0ae2652-4887-43b1-ba27-cf7097900aa2",
+      "runtime": "container"
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "app"
+      }
     }
   ]
 }
