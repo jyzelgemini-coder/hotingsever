@@ -33,6 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount API routes
 app.use('/api', apiRoutes);
+app.use(apiRoutes);
 
 const fs = require('fs');
 

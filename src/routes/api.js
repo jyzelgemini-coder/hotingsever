@@ -24,6 +24,11 @@ try {
 // Configure upload
 const upload = multer({ dest: uploadsDir });
 
+// Health Check
+router.get(['/', '/health'], (req, res) => {
+  res.json({ status: 'ok', service: 'Apsara Cloud Hosting API', time: new Date().toISOString() });
+});
+
 // 1. System Info
 router.get('/system', async (req, res) => {
   try {
