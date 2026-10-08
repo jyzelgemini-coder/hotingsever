@@ -10,14 +10,19 @@ const storage = require('../db/storage');
 const { getSystemInfo } = require('../utils/systemStats');
 const telegramManager = require('../telegramManager');
 
-// Configure upload
-const upload = multer({ dest: path.join(__dirname, '../../data/uploads/') });
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadsDir = isVercel ? '/tmp/uploads' : path.join(__dirname, '../../data/uploads/');
 
-// Ensure uploads dir exists
-const uploadsDir = path.join(__dirname, '../../data/uploads/');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (e) {
+  // Safe ignore if read-only
 }
+
+// Configure upload
+const upload = multer({ dest: uploadsDir });
 
 // 1. System Info
 router.get('/system', async (req, res) => {

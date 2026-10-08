@@ -1,12 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '../../data/db.json');
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DB_DIR = isVercel ? '/tmp/data' : path.join(__dirname, '../../data');
+const DB_PATH = path.join(DB_DIR, 'db.json');
 
-// Ensure db directory exists
-const dbDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+// Ensure db directory exists safely
+try {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Warning: Could not create DB directory, will fallback to memory:', e.message);
 }
 
 // Initial DB template
@@ -21,25 +26,30 @@ const defaultData = {
   }
 };
 
+let memoryCache = { ...defaultData };
+
 function readDb() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      fs.writeFileSync(DB_PATH, JSON.stringify(defaultData, null, 2), 'utf-8');
-      return { ...defaultData };
+      try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(defaultData, null, 2), 'utf-8');
+      } catch (e) {}
+      return memoryCache;
     }
     const data = fs.readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    memoryCache = JSON.parse(data);
+    return memoryCache;
   } catch (err) {
-    console.error('Error reading db.json:', err);
-    return { ...defaultData };
+    return memoryCache;
   }
 }
 
 function writeDb(data) {
+  memoryCache = data;
   try {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error writing db.json:', err);
+    // Memory cache remains active even if disk write fails
   }
 }
 

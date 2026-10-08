@@ -411,48 +411,87 @@ function switchDetailTab(tabName) {
   });
 }
 
-// 6. WebSocket Live Terminal
+let terminalPollInterval = null;
+
+// 6. WebSocket Live Terminal (with HTTP Polling Fallback for Vercel)
 function connectTerminalWs(serverId) {
   if (currentWs) {
     currentWs.close();
+    currentWs = null;
+  }
+  if (terminalPollInterval) {
+    clearInterval(terminalPollInterval);
+    terminalPollInterval = null;
   }
 
   const terminalOutput = document.getElementById('terminal-logs');
-  terminalOutput.innerHTML = '<div class="text-slate-500">[SYSTEM] Connecting to server live console stream...</div>';
+  terminalOutput.innerHTML = '<div class="text-slate-500">[SYSTEM] Connecting to server console stream...</div>';
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${serverId}`;
+  try {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${serverId}`;
 
-  currentWs = new WebSocket(wsUrl);
+    currentWs = new WebSocket(wsUrl);
 
-  currentWs.onopen = () => {
-    appendTerminalLine({ text: '[SYSTEM] Stream connected. Ready.', isSystem: true });
-  };
+    currentWs.onopen = () => {
+      appendTerminalLine({ text: '[SYSTEM] Stream connected via WebSocket. Live.', isSystem: true });
+    };
 
-  currentWs.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'log') {
-        appendTerminalLine(msg.data);
-      } else if (msg.type === 'history') {
-        terminalOutput.innerHTML = '';
-        msg.data.forEach(line => appendTerminalLine(line));
-      } else if (msg.type === 'status') {
-        const server = serversList.find(s => s.id === serverId);
-        if (server) {
-          server.status = msg.data.status;
-          server.stats = msg.data.stats || server.stats;
-          updateDetailHeader(server);
+    currentWs.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'log') {
+          appendTerminalLine(msg.data);
+        } else if (msg.type === 'history') {
+          terminalOutput.innerHTML = '';
+          msg.data.forEach(line => appendTerminalLine(line));
+        } else if (msg.type === 'status') {
+          const server = serversList.find(s => s.id === serverId);
+          if (server) {
+            server.status = msg.data.status;
+            server.stats = msg.data.stats || server.stats;
+            updateDetailHeader(server);
+          }
         }
+      } catch (e) {
+        appendTerminalLine({ text: event.data });
       }
-    } catch (e) {
-      appendTerminalLine({ text: event.data });
+    };
+
+    currentWs.onerror = () => {
+      startPollingFallback(serverId);
+    };
+
+    currentWs.onclose = () => {
+      startPollingFallback(serverId);
+    };
+  } catch (err) {
+    startPollingFallback(serverId);
+  }
+}
+
+function startPollingFallback(serverId) {
+  if (terminalPollInterval) return;
+  appendTerminalLine({ text: '[SYSTEM] Operating in Serverless/HTTP Polling Mode.', isSystem: true });
+
+  const pollLogs = async () => {
+    if (currentServerId !== serverId) {
+      if (terminalPollInterval) clearInterval(terminalPollInterval);
+      return;
     }
+    try {
+      const res = await fetch(`/api/servers/${serverId}/logs`);
+      const logs = await res.json();
+      const terminalOutput = document.getElementById('terminal-logs');
+      if (logs && logs.length > 0) {
+        terminalOutput.innerHTML = '';
+        logs.forEach(l => appendTerminalLine(l));
+      }
+    } catch (e) {}
   };
 
-  currentWs.onclose = () => {
-    appendTerminalLine({ text: '[SYSTEM] Console stream disconnected.', isSystem: true });
-  };
+  pollLogs();
+  terminalPollInterval = setInterval(pollLogs, 3000);
 }
 
 function appendTerminalLine(line) {

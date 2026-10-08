@@ -67,26 +67,31 @@ server.on('upgrade', (request, socket, head) => {
 // Port configuration
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`🚀 CLOUD HOSTING ENGINE ONLINE`);
-  console.log(`🌐 Web Dashboard: http://localhost:${PORT}`);
-  console.log(`⚡ API Endpoint:  http://localhost:${PORT}/api`);
-  console.log(`📡 WebSocket:     ws://localhost:${PORT}/ws/terminal/:id`);
-  console.log(`=======================================================`);
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  server.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`🚀 CLOUD HOSTING ENGINE ONLINE`);
+    console.log(`🌐 Web Dashboard: http://localhost:${PORT}`);
+    console.log(`⚡ API Endpoint:  http://localhost:${PORT}/api`);
+    console.log(`📡 WebSocket:     ws://localhost:${PORT}/ws/terminal/:id`);
+    console.log(`=======================================================`);
 
-  // Initialize Telegram Manager if configured
-  telegramManager.init();
-});
+    // Initialize Telegram Manager if configured
+    telegramManager.init();
+  });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n[SHUTDOWN] Stopping all instances and shutting down...');
-  const servers = orchestrator.getServerList();
-  for (const s of servers) {
-    if (s.status === 'running') {
-      await orchestrator.stopServer(s.id);
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('\n[SHUTDOWN] Stopping all instances and shutting down...');
+    const servers = orchestrator.getServerList();
+    for (const s of servers) {
+      if (s.status === 'running') {
+        await orchestrator.stopServer(s.id);
+      }
     }
-  }
-  process.exit(0);
-});
+    process.exit(0);
+  });
+}
+
+module.exports = app;
+module.exports.server = server;

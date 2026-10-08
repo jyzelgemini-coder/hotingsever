@@ -32,9 +32,15 @@ class ProcessEngine {
   }
 
   getInstanceDir(serverId) {
-    const dir = path.join(__dirname, '../../data/instances', serverId);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    const base = isVercel ? '/tmp/instances' : path.join(__dirname, '../../data/instances');
+    const dir = path.join(base, serverId);
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch (e) {
+      // Ignored if read-only
     }
     return dir;
   }
